@@ -1,5 +1,4 @@
-
-
 discord.py[voice]
+ffmpeg-python
 yt-dlp
 PyNaCl
