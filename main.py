@@ -61,7 +61,7 @@ async def play(ctx, *, search: str):
         except Exception as e:
             return await ctx.send(f"❌ Gagal koneksi suara: {e}")
 
-    async with ctx.typing():
+    #async with ctx.typing():
         try:
             player = await YTDLSource.from_url(search, loop=bot.loop, stream=True)
             if ctx.voice_client.is_playing():
