@@ -9,6 +9,8 @@ TOKEN = os.environ['DISCORD_TOKEN']
 # Konfigurasi Audio yang paling stabil untuk Replit
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
+    'extractaudio': True,
+    'audioformat': 'mp3',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
     'noplaylist': True,
@@ -21,6 +23,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'cookiefile': 'youtube_cookies.txt',
 }
+
 
 
 FFMPEG_OPTIONS = {
