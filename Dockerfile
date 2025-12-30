@@ -1,18 +1,19 @@
-# Menggunakan image Node.js sebagai dasar
-FROM node:18-bullseye
+# Gunakan image Python
+FROM python:3.10-slim
 
-# Langkah krusial: Menginstal FFmpeg di sistem hosting Koyeb
-RUN apt-get update && apt-get install -y ffmpeg
+# Instal FFmpeg (PENTING untuk memperbaiki error "ffmpeg was not found")
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
-# Menentukan direktori kerja di dalam server
+# Set direktori kerja
 WORKDIR /app
 
-# Menyalin file package bot dan menginstal dependensi
-COPY package*.json ./
-RUN npm install
+# Copy file requirements dan instal library
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Menyalin seluruh kode bot ke dalam server
+# Copy semua file bot (termasuk main.py dan youtube_cookies.txt)
 COPY . .
 
-# Perintah untuk menjalankan bot Anda
-CMD ["node", "index.js"]
+# Jalankan bot
+CMD ["python", "main.py"]
+
