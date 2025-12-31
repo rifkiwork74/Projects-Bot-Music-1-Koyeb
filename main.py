@@ -1,8 +1,3 @@
-
-
-
-
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -365,13 +360,3 @@ async def help_cmd(interaction: discord.Interaction):
     await interaction.response.send_message(embeds=[emb_guide, emb_dev])
 
 bot.run(TOKEN)
-
-
-
-
-----
-
-owh iyaa ini ada beberapa bug di bagian playing music, untuk skip dan stop kalau masukkan link video sebelumnya kok kenapa bot nya malah terusin audio nya dan gak dari durasi 00:00 dih kenapa yaa kira kira aku mau fix kan dong, 
-
-
-PERHATIKAN: JANGAN UBAH CODE DIBATAS TADI SELAIN YANG MASALAH DAN DIMINTA  !!!! 
