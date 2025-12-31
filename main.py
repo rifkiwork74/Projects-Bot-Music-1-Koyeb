@@ -177,58 +177,33 @@ class MusicDashboard(discord.ui.View):
         if interaction.guild.voice_client: await interaction.guild.voice_client.disconnect()
         await interaction.response.send_message("⏹️ Player dimatikan.", ephemeral=True, delete_after=5)
 
-# --- 7. CORE LOGIC ---
-async def start_stream(interaction, url):
-    q = get_queue(interaction.guild_id); vc = interaction.guild.voice_client
-    if not vc: return
-    try:
-        data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS), volume=q.volume)
-        def after_playing(error): asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
-        vc.play(source, after=after_playing)
-        if q.last_dashboard:
-            try: await q.last_dashboard.delete()
-            except: pass
-        emb = discord.Embed(title=f"🎶 Sedang Diputar", description=f"**[{data['title']}]({url})**", color=0x2ecc71); emb.set_thumbnail(url=data.get('thumbnail'))
-        q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
-    except Exception as e: await interaction.channel.send(f"❌ Error Audio: {e}")
 
-async def next_logic(interaction):
-    q = get_queue(interaction.guild_id)
-    if q.queue: next_song = q.queue.popleft(); await start_stream(interaction, next_song['url'])
-    else:
-        if q.last_dashboard:
-            try: await q.last_dashboard.delete()
-            except: pass
-        await interaction.channel.send("✅ Antrean selesai.", delete_after=10)
-
+# --- 7. CORE LOGIC (FIXED ERROR & LOADING) ---
 async def play_music(interaction, url):
     q = get_queue(interaction.guild_id)
     
-    # Memastikan bot terhubung ke Voice Channel
     if not interaction.guild.voice_client:
         await interaction.user.voice.channel.connect()
     
     vc = interaction.guild.voice_client
     
     if vc.is_playing() or vc.is_paused():
-        # JIKA LAGU MASUK ANTREAN
         data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         q.queue.append({'title': data['title'], 'url': url})
         emb = discord.Embed(description=f"✅ **Berhasil Masuk Antrean:**\n{data['title']}", color=0x3498db)
         
-        # MEMBERIKAN RESPONS AGAR LOADING HILANG
+        # Perbaikan: followup tidak mendukung delete_after
         if interaction.response.is_done():
-            await interaction.followup.send(embed=emb, ephemeral=True, delete_after=20)
+            await interaction.followup.send(embed=emb, ephemeral=True)
         else:
             await interaction.response.send_message(embed=emb, ephemeral=True, delete_after=20)
     else:
-        # JIKA LAGU LANGSUNG DIPUTAR
-        # Kirim respons singkat dulu agar "is thinking" hilang
+        # Menghilangkan status "Thinking"
         if not interaction.response.is_done():
-            await interaction.response.send_message("🎶 **Memulai pemutaran...**", ephemeral=True, delete_after=2)
+            await interaction.response.send_message("🎶 **Memproses lagu...**", ephemeral=True, delete_after=5)
         else:
-            await interaction.followup.send("🎶 **Memulai pemutaran...**", ephemeral=True, delete_after=2)
+            # Kirim pesan tanpa delete_after untuk menghindari TypeError
+            await interaction.followup.send("🎶 **Memproses lagu...**", ephemeral=True)
             
         await start_stream(interaction, url)
 
@@ -238,14 +213,13 @@ async def start_stream(interaction, url):
     if not vc: return
     
     try:
-        # Stop jika ada proses menggantung
         if vc.is_playing() or vc.is_paused():
             vc.stop()
             await asyncio.sleep(0.5)
 
         data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         
-        # Reset FFmpeg Options untuk memastikan mulai dari 00:00
+        # Inisialisasi audio source
         source = discord.PCMVolumeTransformer(
             discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS), 
             volume=q.volume
@@ -257,7 +231,7 @@ async def start_stream(interaction, url):
             
         vc.play(source, after=after_playing)
         
-        # Dashboard Kontrol
+        # Hapus dashboard lama jika ada
         if q.last_dashboard:
             try: await q.last_dashboard.delete()
             except: pass
@@ -265,11 +239,13 @@ async def start_stream(interaction, url):
         emb = discord.Embed(title=f"🎶 Sedang Diputar", description=f"**[{data['title']}]({url})**", color=0x2ecc71)
         emb.set_thumbnail(url=data.get('thumbnail'))
         
-        # Dashboard ini akan dikirim ke channel sebagai pengganti loading
+        # Kirim dashboard baru
         q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
         
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error pada start_stream: {e}")
+        await interaction.channel.send(f"❌ Terjadi kesalahan: {e}", delete_after=10)
+        
 
 
 # --- 8. COMMANDS ---
