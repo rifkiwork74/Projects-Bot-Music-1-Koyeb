@@ -1,3 +1,8 @@
+
+
+
+
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -203,14 +208,74 @@ async def next_logic(interaction):
         await interaction.channel.send("✅ Antrean selesai.", delete_after=10)
 
 async def play_music(interaction, url):
-    q = get_queue(interaction.guild_id); await interaction.user.voice.channel.connect() if not interaction.guild.voice_client else None
+    q = get_queue(interaction.guild_id)
+    
+    # Memastikan bot terhubung ke Voice Channel
+    if not interaction.guild.voice_client:
+        await interaction.user.voice.channel.connect()
+    
     vc = interaction.guild.voice_client
+    
     if vc.is_playing() or vc.is_paused():
+        # JIKA LAGU MASUK ANTREAN
         data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         q.queue.append({'title': data['title'], 'url': url})
         emb = discord.Embed(description=f"✅ **Berhasil Masuk Antrean:**\n{data['title']}", color=0x3498db)
-        await (interaction.followup.send(embed=emb, ephemeral=True, delete_after=20) if interaction.response.is_done() else interaction.response.send_message(embed=emb, ephemeral=True, delete_after=20))
-    else: await start_stream(interaction, url)
+        
+        # MEMBERIKAN RESPONS AGAR LOADING HILANG
+        if interaction.response.is_done():
+            await interaction.followup.send(embed=emb, ephemeral=True, delete_after=20)
+        else:
+            await interaction.response.send_message(embed=emb, ephemeral=True, delete_after=20)
+    else:
+        # JIKA LAGU LANGSUNG DIPUTAR
+        # Kirim respons singkat dulu agar "is thinking" hilang
+        if not interaction.response.is_done():
+            await interaction.response.send_message("🎶 **Memulai pemutaran...**", ephemeral=True, delete_after=2)
+        else:
+            await interaction.followup.send("🎶 **Memulai pemutaran...**", ephemeral=True, delete_after=2)
+            
+        await start_stream(interaction, url)
+
+async def start_stream(interaction, url):
+    q = get_queue(interaction.guild_id)
+    vc = interaction.guild.voice_client
+    if not vc: return
+    
+    try:
+        # Stop jika ada proses menggantung
+        if vc.is_playing() or vc.is_paused():
+            vc.stop()
+            await asyncio.sleep(0.5)
+
+        data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+        
+        # Reset FFmpeg Options untuk memastikan mulai dari 00:00
+        source = discord.PCMVolumeTransformer(
+            discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS), 
+            volume=q.volume
+        )
+        
+        def after_playing(error):
+            if source: source.cleanup()
+            asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
+            
+        vc.play(source, after=after_playing)
+        
+        # Dashboard Kontrol
+        if q.last_dashboard:
+            try: await q.last_dashboard.delete()
+            except: pass
+            
+        emb = discord.Embed(title=f"🎶 Sedang Diputar", description=f"**[{data['title']}]({url})**", color=0x2ecc71)
+        emb.set_thumbnail(url=data.get('thumbnail'))
+        
+        # Dashboard ini akan dikirim ke channel sebagai pengganti loading
+        q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
+        
+    except Exception as e:
+        print(f"Error: {e}")
+
 
 # --- 8. COMMANDS ---
 @bot.tree.command(name="play", description="Putar musik")
@@ -300,3 +365,13 @@ async def help_cmd(interaction: discord.Interaction):
     await interaction.response.send_message(embeds=[emb_guide, emb_dev])
 
 bot.run(TOKEN)
+
+
+
+
+----
+
+owh iyaa ini ada beberapa bug di bagian playing music, untuk skip dan stop kalau masukkan link video sebelumnya kok kenapa bot nya malah terusin audio nya dan gak dari durasi 00:00 dih kenapa yaa kira kira aku mau fix kan dong, 
+
+
+PERHATIKAN: JANGAN UBAH CODE DIBATAS TADI SELAIN YANG MASALAH DAN DIMINTA  !!!! 
