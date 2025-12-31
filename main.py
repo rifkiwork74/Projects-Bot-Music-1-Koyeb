@@ -1,3 +1,4 @@
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -178,60 +179,53 @@ class MusicDashboard(discord.ui.View):
         await interaction.response.send_message("⏹️ Player dimatikan.", ephemeral=True, delete_after=5)
 
 
-# --- 7. CORE LOGIC (FIXED ERROR & LOADING) ---
-async def play_music(interaction, url):
+
+# --- 7. CORE LOGIC (FIXED ORDER & CLEANUP) ---
+
+async def next_logic(interaction):
+    """Logika untuk memutar lagu berikutnya di antrean"""
     q = get_queue(interaction.guild_id)
-    
-    if not interaction.guild.voice_client:
-        await interaction.user.voice.channel.connect()
-    
-    vc = interaction.guild.voice_client
-    
-    if vc.is_playing() or vc.is_paused():
-        data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
-        q.queue.append({'title': data['title'], 'url': url})
-        emb = discord.Embed(description=f"✅ **Berhasil Masuk Antrean:**\n{data['title']}", color=0x3498db)
-        
-        # Perbaikan: followup tidak mendukung delete_after
-        if interaction.response.is_done():
-            await interaction.followup.send(embed=emb, ephemeral=True)
-        else:
-            await interaction.response.send_message(embed=emb, ephemeral=True, delete_after=20)
+    if q.queue:
+        next_song = q.queue.popleft()
+        await start_stream(interaction, next_song['url'])
     else:
-        # Menghilangkan status "Thinking"
-        if not interaction.response.is_done():
-            await interaction.response.send_message("🎶 **Memproses lagu...**", ephemeral=True, delete_after=5)
-        else:
-            # Kirim pesan tanpa delete_after untuk menghindari TypeError
-            await interaction.followup.send("🎶 **Memproses lagu...**", ephemeral=True)
-            
-        await start_stream(interaction, url)
+        # Bersihkan dashboard jika antrean habis
+        if q.last_dashboard:
+            try: await q.last_dashboard.delete()
+            except: pass
+            q.last_dashboard = None
+        await interaction.channel.send("✅ Antrean selesai.", delete_after=10)
 
 async def start_stream(interaction, url):
+    """Fungsi utama untuk streaming audio dari YouTube"""
     q = get_queue(interaction.guild_id)
     vc = interaction.guild.voice_client
     if not vc: return
     
     try:
+        # 1. Paksa hentikan audio sebelumnya jika masih berjalan
         if vc.is_playing() or vc.is_paused():
             vc.stop()
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.8) # Jeda agar FFmpeg benar-benar mati
 
+        # 2. Ambil data dari YT-DLP
         data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         
-        # Inisialisasi audio source
+        # 3. Setup Audio Source
         source = discord.PCMVolumeTransformer(
             discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS), 
             volume=q.volume
         )
         
+        # 4. Fungsi Callback setelah lagu selesai
         def after_playing(error):
-            if source: source.cleanup()
+            if error: print(f"Player error: {error}")
+            # Jalankan antrean berikutnya
             asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
             
         vc.play(source, after=after_playing)
         
-        # Hapus dashboard lama jika ada
+        # 5. Update UI Dashboard
         if q.last_dashboard:
             try: await q.last_dashboard.delete()
             except: pass
@@ -239,13 +233,44 @@ async def start_stream(interaction, url):
         emb = discord.Embed(title=f"🎶 Sedang Diputar", description=f"**[{data['title']}]({url})**", color=0x2ecc71)
         emb.set_thumbnail(url=data.get('thumbnail'))
         
-        # Kirim dashboard baru
         q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
         
     except Exception as e:
         print(f"Error pada start_stream: {e}")
-        await interaction.channel.send(f"❌ Terjadi kesalahan: {e}", delete_after=10)
+        await interaction.channel.send(f"❌ Terjadi kesalahan saat memutar: {e}", delete_after=10)
+
+async def play_music(interaction, url):
+    """Fungsi kontrol untuk play langsung atau masuk queue"""
+    q = get_queue(interaction.guild_id)
+    
+    # Connect ke Voice Channel jika belum
+    if not interaction.guild.voice_client:
+        if interaction.user.voice:
+            await interaction.user.voice.channel.connect()
+        else:
+            return await interaction.channel.send("❌ Kamu harus di Voice Channel!")
+    
+    vc = interaction.guild.voice_client
+    
+    if vc.is_playing() or vc.is_paused():
+        # Jika sedang ada lagu, masukkan ke antrean
+        data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+        q.queue.append({'title': data['title'], 'url': url})
+        emb = discord.Embed(description=f"✅ **Berhasil Masuk Antrean:**\n{data['title']}", color=0x3498db)
         
+        if interaction.response.is_done():
+            await interaction.followup.send(embed=emb, ephemeral=True)
+        else:
+            await interaction.response.send_message(embed=emb, ephemeral=True, delete_after=20)
+    else:
+        # Jika kosong, langsung putar
+        if not interaction.response.is_done():
+            await interaction.response.send_message("🎶 **Memproses lagu...**", ephemeral=True, delete_after=5)
+        else:
+            await interaction.followup.send("🎶 **Memproses lagu...**", ephemeral=True)
+            
+        await start_stream(interaction, url)
+
 
 
 # --- 8. COMMANDS ---
