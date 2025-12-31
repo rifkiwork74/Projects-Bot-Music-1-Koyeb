@@ -71,7 +71,7 @@ async def on_voice_state_update(member, before, after):
                 q.queue.clear()
                 await vc.disconnect()
 
-# --- 5. UI: PEMILIH LAGU (NAVIGASI + AUTO-DELETE) ---
+# --- 5. UI: PEMILIH LAGU (NAVIGASI + AUTO-DELETE + FULL 10 OPTIONS) ---
 class SearchControlView(discord.ui.View):
     def __init__(self, entries, user, page=0):
         super().__init__(timeout=60)
@@ -97,13 +97,15 @@ class SearchControlView(discord.ui.View):
     @discord.ui.button(label="🎯 Pilih Lagu", style=discord.ButtonStyle.primary)
     async def pick(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user != self.user: return
-        options = [discord.SelectOption(label=f"Lagu Nomor {self.start_idx + i + 1}", value=entry['webpage_url'], description=entry['title'][:50]) for i, entry in enumerate(self.current_slice)]
-        select = discord.ui.Select(placeholder="Pilih nomor lagu...", options=options)
+        
+        # Menampilkan semua 10 lagu dari hasil pencarian (bukan cuma yang di halaman itu)
+        options = [discord.SelectOption(label=f"Lagu Nomor {i + 1}", value=entry['webpage_url'], description=entry['title'][:50]) for i, entry in enumerate(self.entries)]
+        select = discord.ui.Select(placeholder="Pilih nomor lagu (1-10)...", options=options)
         
         async def select_callback(inter: discord.Interaction):
             await inter.response.defer()
             await play_music(inter, select.values[0])
-            try: await interaction.delete_original_response()
+            try: await interaction.delete_original_response() # Pesan pencarian otomatis hilang
             except: pass
 
         select.callback = select_callback
@@ -144,7 +146,7 @@ class MusicDashboard(discord.ui.View):
     async def vol(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = VolumeControlView(self.guild_id); await interaction.response.send_message(embed=view.create_embed(), view=view, ephemeral=True)
     
-    # FITUR SMART QUEUE (JANGAN DIHAPUS)
+    # FITUR SMART QUEUE (TETAP)
     @discord.ui.button(label="Antrean", emoji="📜", style=discord.ButtonStyle.gray)
     async def list_q(self, interaction: discord.Interaction, button: discord.ui.Button):
         q = get_queue(self.guild_id)
