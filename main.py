@@ -185,47 +185,71 @@ async def play(interaction: discord.Interaction, cari: str):
     await play_music(interaction, data['entries'][0]['webpage_url'])
     await interaction.followup.send("✅ OK!", ephemeral=True)
 
-@bot.tree.command(name="help", description="Lihat Panduan Cara Menggunakan Bot Ini")
+@bot.tree.command(name="help", description="Lihat Panduan & Info Developer")
 async def help_cmd(interaction: discord.Interaction):
-    dev_user = "ikiii" 
-    dev_id = interaction.client.application.owner.id if interaction.client.application.owner else "779745719321722881"
+    # Data Developer
+    dev_name = "ikiii"
+    dev_id = 590774565115002880  # ID User kamu
+    
+    # 1. Embed Panduan (Guide)
+    emb_guide = discord.Embed(
+        title="📖 Panduan Fitur Bot Music",
+        description="Gunakan perintah di bawah ini untuk mengontrol pemutar musik.",
+        color=0x3498db
+    )
+    
+    emb_guide.add_field(
+        name="🎵 Kontrol Utama",
+        value=(
+            "┕ 🔘 `/play` - Putar musik via judul/link\n"
+            "┕ ⏭️ `/skip` - Lewati lagu saat ini\n"
+            "┕ ⏹️ `/stop` - Matikan & hapus antrean\n"
+            "┕ 📜 `/queue`- Lihat daftar antrean"
+        ),
+        inline=False
+    )
+    
+    emb_guide.add_field(
+        name="⚙️ Sistem & Volume",
+        value=(
+            "┕ 🔊 `/volume` - Atur suara (0-200%)\n"
+            "┕ 📥 `/masuk_vc` - Panggil bot ke VC\n"
+            "┕ 📤 `/keluar_vc` - Keluarkan bot dari VC"
+        ),
+        inline=False
+    )
 
-    # Guide Embed
-    emb_guide = discord.Embed(title="📖 Panduan Fitur Bot Music", color=0x3498db)
-    if bot.user.avatar: 
-        emb_guide.set_thumbnail(url=bot.user.avatar.url)
-        
-    emb_guide.description = (
-        "🎵 **KONTROL UTAMA**\n"
-        "┕ 🔘 `/play` - Putar musik via judul/link\n"
-        "┕ ⏭️ `/skip` - Lewati lagu yang diputar\n"
-        "┕ ⏹️ `/stop` - Matikan musik & hapus antrean\n"
-        "┕ 📜 `/queue`- Lihat daftar lagu mengantre\n\n"
-        "⚙️ **SISTEM & VOLUME**\n"
-        "┕ 🔊 `/volume` - Atur level suara (0-200%)\n"
-        "┕ 📥 `/masuk_vc`  - Panggil bot ke Voice Channel\n"
-        "┕ 📤 `/keluar_vc` - Keluarkan bot dari Voice Channel\n\n"
-        "✨ **FITUR DASHBOARD INTERAKTIF**\n"
-        "┕ ⏯️ **Pause/Resume** : Jeda atau lanjut lagu\n"
-        "┕ 🔊 **Volume Mixer** : Atur suara lewat tombol\n"
-        "┕ 📜 **Smart Queue** : Pilih & lompat antrean lagu\n"
-        "┕ ⏭️ **Quick Skip** : Lewati lagu tanpa ngetik"
+    # 2. Embed Developer (Elegan & Professional)
+    emb_dev = discord.Embed(
+        title="👨‍💻 Developer Profile",
+        description=(
+            "Bot ini dirancang untuk memberikan pengalaman mendengarkan musik "
+            "dengan kualitas audio terbaik dan antarmuka yang modern."
+        ),
+        color=0x9b59b6
     )
-   
-    # Developer Embed
-    emb_dev = discord.Embed(title="👨‍💻 Developer Profile", color=0x9b59b6)
-    emb_dev.description = (
-        f"Developer : {dev_user}\n"
-        f"User ID   : {dev_id}\n"
-        f"Status    : Active - IT - Engineering\n"
-        f"Kata - kata :  \n"
-        "Bot ini dibuat oleh seorang yang bernama **ikiii** yang bijaksana, "
-        "dan yang melakukan segala hal apapun diawali dengan berdo'a 🤲🏻, amiin.\n\n"
+
+    # Bagian Detail Developer dengan Mention Link
+    emb_dev.add_field(name="👤 Developer", value=f"**{dev_name}**", inline=True)
+    emb_dev.add_field(name="🆔 User ID", value=f"`{dev_id}`", inline=True)
+    emb_dev.add_field(name="🔗 Contact", value=f"<@{dev_id}>", inline=True) # Ini akan jadi link ke profil kamu
+    
+    emb_dev.add_field(
+        name="📜 Quotes",
+        value="*\"Melakukan segala hal diawali dengan berdo'a 🤲🏻, amiin.\"*",
+        inline=False
     )
-    emb_dev.set_footer(text="Bot Bot • ikiii angels Project v16", icon_url=interaction.user.display_avatar.url)
+
+    # Penempatan Gambar & Footer
     emb_dev.set_image(url="https://i.getpantry.cloud/apf/help_banner.gif")
+    emb_dev.set_footer(
+        text=f"Premium Quality Music System • {dev_name} Project v16",
+        icon_url=interaction.user.display_avatar.url
+    )
 
+    # Kirim kedua embed sekaligus
     await interaction.response.send_message(embeds=[emb_guide, emb_dev])
+
 
 @bot.tree.command(name="masuk_vc", description="Masukkan Bot Ke Voice")
 async def masuk(interaction: discord.Interaction):
