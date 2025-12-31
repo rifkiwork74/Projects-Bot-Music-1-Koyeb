@@ -223,67 +223,58 @@ async def play(interaction: discord.Interaction, cari: str):
         await play_music(interaction, data['entries'][0]['webpage_url'])
         await interaction.followup.send(f"🔍 Menemukan: **{data['entries'][0]['title']}**", ephemeral=True)
 
-@bot.tree.command(name="help", description="Lihat Panduan Bot Ini dengan Jelas")
+@bot.tree.command(name="help", description="Lihat Panduan Cara Menggunakan Bot Ini")
 async def help_cmd(interaction: discord.Interaction):
     dev_user = "ikiii" 
     dev_id = interaction.client.application.owner.id if interaction.client.application.owner else "779745719321722881"
 
-    embed = discord.Embed(
-        title="✨ Lihat Panduan Bot Ini dengan Jelas",
-        description="Selamat datang di sistem musik tercanggih dengan kualitas audio **320kbps High-Fidelity**. Berikut adalah panduan perintah yang tersedia:",
-        color=0x5865F2
-    )
+    
     if bot.user.avatar: embed.set_thumbnail(url=bot.user.avatar.url)
-
-    embed.add_field(
-        name="🎵 **KONTROL UTAMA**",
-        value=(
-            "┕ 🔘 `/play` - Putar musik via judul/link\n"
-            "┕ ⏭️ `/skip` - Lewati lagu yang diputar\n"
-            "┕ ⏹️ `/stop` - Matikan musik & hapus antrean\n"
-            "┕ 📜 `/queue`- Lihat daftar lagu mengantre"
-        ), inline=False
-    )
-    embed.add_field(
-        name="⚙️ **SISTEM & VOLUME**",
-        value=(
-            "┕ 🔊 `/volume` - Atur level suara (0-200%)\n"
-            "┕ 📥 `/masuk`  - Panggil bot ke Voice Channel\n"
-            "┕ 📤 `/keluar` - Keluarkan bot dari Voice Channel"
-        ), inline=False
-    )
-    embed.add_field(
-        name="✨ **FITUR DASHBOARD INTERAKTIF**",
-        value=(
-            "┕ ⏯️ **Pause/Resume** : Jeda atau lanjut lagu\n"
-            "┕ 🔊 **Volume Mixer** : Atur suara lewat tombol\n"
-            "┕ 📜 **Smart Queue** : Pilih & lompat antrean lagu\n"
-            "┕ ⏭️ **Quick Skip** : Lewati lagu tanpa ngetik"
-        ), inline=False
-    )
-    embed.add_field(
-        name="👑 **DEVELOPER INFORMATION**",
-        value=(
-            f"```yaml\n"
+	
+	emb_guide = discord.Embed(title="📖 Panduan Fitur Bot Music", color=0x3498db)
+    emb_guide.description = (
+        "🎵 **KONTROL UTAMA**\n"
+        "┕ 🔘 `/play` - Putar musik via judul/link\n"
+        "┕ ⏭️ `/skip` - Lewati lagu yang diputar\n"
+        "┕ ⏹️ `/stop` - Matikan musik & hapus antrean\n"
+        "┕ 📜 `/queue`- Lihat daftar lagu mengantre"
+       
+        
+        "\n\n⚙️ **SISTEM & VOLUME**\n"
+        "┕ 🔊 `/volume` - Atur level suara (0-200%)\n"
+        "┕ 📥 `/masuk`  - Panggil bot ke Voice Channel\n"
+        "┕ 📤 `/keluar` - Keluarkan bot dari Voice Channel"
+        
+        "\n\n✨ **FITUR DASHBOARD INTERAKTIF**\n"
+        "┕ ⏯️ **Pause/Resume** : Jeda atau lanjut lagu\n"
+        "┕ 🔊 **Volume Mixer** : Atur suara lewat tombol\n"
+        "┕ 📜 **Smart Queue** : Pilih & lompat antrean lagu\n"
+        "┕ ⏭️ **Quick Skip** : Lewati lagu tanpa ngetik"
+        )
+   
+    emb_dev = discord.Embed(title="👨‍💻 Developer Profile", color=0x9b59b6)
+    emb_dev.description = (
             f"Developer : {dev_user}\n"
             f"User ID   : {dev_id}\n"
-            f"Status    : Active IT Engineering\n"
-            f"```\n"
-            "*\"Terima kasih telah menggunakan bot ini, semoga harimu menyenangkan dengan musik pilihanmu kawan...!\"*"
-        ), inline=False
-    )
-    embed.set_footer(text="Premium Quality Music System • ikiii Project v16", icon_url=interaction.user.display_avatar.url)
-    embed.set_image(url="https://i.getpantry.cloud/apf/help_banner.gif")
-    await interaction.response.send_message(embed=embed)
+            f"Status    : Active - IT - Engineering\n"
+            f"Kata - kata :  \n"
+            "Bot ini dibuat oleh seorang yang bernama **ikiii** yang bijaksana, "
+            "dan yang melakukan segala hal apapun diawali dengan berdo'a 🤲🏻, amiin.\n\n"
+     )
+     embed_dev.set_footer(text="Bot Bt • ikiii angels Project v16", icon_url=interaction.user.display_avatar.url)
+     embed_dev.set_image(url="https://i.getpantry.cloud/apf/help_banner.gif")
 
-@bot.tree.command(name="masuk")
+    await interaction.response.send_message(embeds=[emb_guide, emb_dev])
+    
+
+@bot.tree.command(name="masuk VC", description="Masukkan Bot Ke Voice")
 async def masuk(interaction: discord.Interaction):
     if interaction.user.voice:
         await interaction.user.voice.channel.connect()
         await interaction.response.send_message("👋 Halo! Saya sudah standby di VC.")
     else: await interaction.response.send_message("❌ Masuk VC dulu!", ephemeral=True)
 
-@bot.tree.command(name="keluar")
+@bot.tree.command(name="keluar VC", description="Kekuarkan Bot Dari Voice")
 async def keluar(interaction: discord.Interaction):
     if interaction.guild.voice_client:
         get_queue(interaction.guild_id).queue.clear()
@@ -291,7 +282,7 @@ async def keluar(interaction: discord.Interaction):
         await interaction.response.send_message("👋 Sampai jumpa lagi!")
     else: await interaction.response.send_message("❌ Aku sedang tidak di VC.", ephemeral=True)
 
-@bot.tree.command(name="volume")
+@bot.tree.command(name="volume", description="Untuk Mengatur Volume")
 async def volume(interaction: discord.Interaction, persen: int):
     q = get_queue(interaction.guild_id)
     if 0 <= persen <= 200:
