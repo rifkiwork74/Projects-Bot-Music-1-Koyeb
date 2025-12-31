@@ -23,8 +23,9 @@ YTDL_OPTIONS = {
 
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin',
-    'options': '-vn -b:a 320k -af "loudnorm" -threads 2'
+    'options': '-vn -b:a 128k -threads 2' # Menghapus loudnorm & menurunkan bitrate agar tidak buffer
 }
+
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 
@@ -243,7 +244,6 @@ async def play_music(interaction, url):
     """Fungsi kontrol untuk play langsung atau masuk queue"""
     q = get_queue(interaction.guild_id)
     
-    # Connect ke Voice Channel jika belum
     if not interaction.guild.voice_client:
         if interaction.user.voice:
             await interaction.user.voice.channel.connect()
@@ -253,21 +253,22 @@ async def play_music(interaction, url):
     vc = interaction.guild.voice_client
     
     if vc.is_playing() or vc.is_paused():
-        # Jika sedang ada lagu, masukkan ke antrean
         data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         q.queue.append({'title': data['title'], 'url': url})
         emb = discord.Embed(description=f"✅ **Berhasil Masuk Antrean:**\n{data['title']}", color=0x3498db)
         
+        # FIX: Followup tidak boleh pakai delete_after
         if interaction.response.is_done():
             await interaction.followup.send(embed=emb, ephemeral=True)
         else:
             await interaction.response.send_message(embed=emb, ephemeral=True, delete_after=20)
     else:
-        # Jika kosong, langsung putar
+        # Menghilangkan status "Thinking"
+        msg = "🎶 **Memproses lagu...**"
         if not interaction.response.is_done():
-            await interaction.response.send_message("🎶 **Memproses lagu...**", ephemeral=True, delete_after=5)
+            await interaction.response.send_message(msg, ephemeral=True, delete_after=5)
         else:
-            await interaction.followup.send("🎶 **Memproses lagu...**", ephemeral=True)
+            await interaction.followup.send(msg, ephemeral=True)
             
         await start_stream(interaction, url)
 
@@ -277,13 +278,21 @@ async def play_music(interaction, url):
 @bot.tree.command(name="play", description="Putar musik")
 async def play(interaction: discord.Interaction, cari: str):
     await interaction.response.defer()
-    if not interaction.user.voice: return await interaction.followup.send("❌ Masuk Voice dulu!")
-    if "http" in cari: await play_music(interaction, cari); await interaction.followup.send("✅ Memproses...", ephemeral=True, delete_after=5)
+    if not interaction.user.voice: 
+        return await interaction.followup.send("❌ Masuk Voice dulu!", ephemeral=True)
+    
+    if "http" in cari: 
+        await play_music(interaction, cari)
+        # FIX: Hapus delete_after di sini
+        await interaction.followup.send("✅ Permintaan diproses!", ephemeral=True)
     else:
         data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(f"ytsearch10:{cari}", download=False))
-        if not data['entries']: return await interaction.followup.send("❌ Tidak ketemu.")
+        if not data['entries']: 
+            return await interaction.followup.send("❌ Tidak ketemu.", ephemeral=True)
+            
         embed = discord.Embed(title="🎵 Hasil Pencarian", description="\n".join([f"**{i+1}.** {e['title'][:60]}" for i,e in enumerate(data['entries'])]), color=0x3498db)
         await interaction.followup.send(embed=embed, view=SearchControlView(data['entries'], interaction.user))
+
 
 @bot.tree.command(name="stop", description="Stop musik & hapus antrean")
 async def stop_slash(interaction: discord.Interaction):
