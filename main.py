@@ -63,15 +63,37 @@ async def on_voice_state_update(member, before, after):
     if not member.bot and before.channel is not None:
         vc = member.guild.voice_client
         if vc and len(before.channel.members) == 1:
-            msg_chan = vc.guild.system_channel or vc.channel
-            if msg_chan:
-                await msg_chan.send("⚠️ **Informasi:** Tidak ada pengguna di Voice Channel. Bot akan otomatis keluar dalam **15 detik**.", delete_after=15)
+            # --- PERBAIKAN LOGIKA CHANNEL DI SINI ---
+            # Kita ambil data queue untuk tahu dimana dashboard terakhir muncul
+            q = get_queue(member.guild.id)
+            msg_chan = None
+
+            # Prioritas 1: Kirim ke channel tempat Dashboard Musik berada (paling akurat)
+            if q.last_dashboard:
+                msg_chan = q.last_dashboard.channel
             
-            await asyncio.sleep(15)
+            # Prioritas 2: Jika dashboard tidak ada, cari text channel pertama di kategori voice tersebut
+            elif before.channel.category:
+                for channel in before.channel.category.text_channels:
+                    # Pastikan bot punya izin kirim pesan di situ
+                    if channel.permissions_for(member.guild.me).send_messages:
+                        msg_chan = channel
+                        break
+            
+            # Kirim pesan peringatan jika channel ditemukan
+            if msg_chan:
+                await msg_chan.send("⚠️ **Informasi:** Tidak ada pengguna di Voice Channel. Bot akan otomatis keluar dalam **30 detik**.", delete_after=30)
+            
+            # --- BAGIAN PENGATURAN WAKTU (TIMER) ---
+            # Ubah angka 15 di bawah ini jika ingin mengganti durasi (misal 60 untuk 1 menit)
+            await asyncio.sleep(30) 
+            
+            # Cek lagi setelah waktu habis, apakah masih sendirian?
             if vc and vc.channel and len(vc.channel.members) == 1:
                 q = get_queue(member.guild.id)
-                q.queue.clear()
-                await vc.disconnect()
+                q.queue.clear() # Hapus antrean
+                await vc.disconnect() # Cabut dari voice
+
 
 # --- 5. UI: PEMILIH LAGU (NAVIGASI + AUTO-DELETE + FULL 10 OPTIONS) ---
 class SearchControlView(discord.ui.View):
@@ -345,7 +367,7 @@ async def keluar(interaction: discord.Interaction):
 @bot.tree.command(name="help", description="Lihat Panduan & Info Developer")
 async def help_cmd(interaction: discord.Interaction):
     dev_id = 590774565115002880
-    emb_guide = discord.Embed(title="📖 Panduan Fitur Bot Music", color=0x3498db)
+    emb_guide = discord.Embed(title="📖 Panduan Fitur Bot Music Angelss", color=0x3498db)
     if bot.user.avatar: emb_guide.set_thumbnail(url=bot.user.avatar.url)
     emb_guide.description = (
         "🎵 **KONTROL UTAMA**\n"
@@ -366,7 +388,7 @@ async def help_cmd(interaction: discord.Interaction):
     emb_dev = discord.Embed(title="👨‍💻 Developer Profile", color=0x9b59b6)
     emb_dev.description = (f"**Developer :** ikiii\n**User ID :** `{dev_id}`\n**Status :** Active - IT - Engineering\n**Contact :** <@{dev_id}>\n\n**Kata - kata :**\nBot ini dibuat oleh seorang yang bernama **ikiii** yang bijaksana, dan yang melakukan segala hal apapun diawali dengan berdo'a 🤲🏻, amiin.")
     emb_dev.set_image(url="https://i.getpantry.cloud/apf/help_banner.gif")
-    emb_dev.set_footer(text="Bot Bot • ikiii angels Project v16", icon_url=interaction.user.display_avatar.url)
+    emb_dev.set_footer(text="Projects Bot • Music Ikiii hehehe ....", icon_url=interaction.user.display_avatar.url)
     await interaction.response.send_message(embeds=[emb_guide, emb_dev])
 
 bot.run(TOKEN)
