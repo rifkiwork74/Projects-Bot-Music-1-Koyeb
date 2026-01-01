@@ -43,6 +43,38 @@ class ModernBot(commands.Bot):
 
 bot = ModernBot()
 
+
+# --- TAMBAHAN: NOTIFIKASI BOT ONLINE ---
+@bot.event
+async def on_ready():
+    # GANTI ANGKA DI BAWAH INI DENGAN ID CHANNEL TEXT KAMU
+    target_channel_id = 1456250414638043169 
+    
+    channel = bot.get_channel(target_channel_id)
+    if channel:
+        embed = discord.Embed(
+            title="🚀 SYSTEM RELOADED & UPDATED",
+            description="**Bot telah online dan berhasil di update!**\nSistem audio v16 siap digunakan dengan performa maksimal.",
+            color=0x2ecc71 # Warna Hijau Matrix Keren
+        )
+        embed.add_field(
+            name="📖 Panduan Penggunaan", 
+            value="Silahkan ketik `/help` untuk melihat daftar perintah terbaru.", 
+            inline=False
+        )
+        embed.set_footer(
+            text="System Online • ikiii angels Project", 
+            icon_url=bot.user.avatar.url if bot.user.avatar else None
+        )
+        # Menambahkan Thumbnail GIF biar terlihat canggih
+        embed.set_thumbnail(url="https://i.gifer.com/7plQ.gif") 
+        
+        await channel.send(embed=embed)
+    
+    print(f"✅ Logged in as {bot.user} - Notifikasi terkirim!")
+
+
+
 # --- 3. QUEUE SYSTEM ---
 queues = {}
 class MusicQueue:
