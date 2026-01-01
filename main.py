@@ -44,16 +44,15 @@ class ModernBot(commands.Bot):
 bot = ModernBot()
 
 
-# --- TAMBAHAN: NOTIFIKASI BOT ONLINE (AUTO-CLEAN) ---
+# --- TAMBAHAN: NOTIFIKASI BOT ONLINE (AUTO-CLEAN + FULL INFO) ---
 @bot.event
 async def on_ready():
-    # GANTI ANGKA DI BAWAH INI DENGAN ID CHANNEL TEXT KAMU
+    # ID Channel 
     target_channel_id = 1456250414638043169 
     
     channel = bot.get_channel(target_channel_id)
     if channel:
         # --- FITUR PEMBERSIH ---
-        # Bot akan mengecek 10 pesan terakhir, kalau ada pesan dari dirinya sendiri, akan dihapus.
         try:
             async for message in channel.history(limit=10):
                 if message.author == bot.user:
@@ -64,14 +63,22 @@ async def on_ready():
         # --- KIRIM PESAN BARU ---
         embed = discord.Embed(
             title="🚀 SYSTEM RELOADED & UPDATED",
-            description="**Bot telah online dan berhasil di update!**\Bot audio Angelss siap digunakan dengan baik.",
-            color=0x2ecc71 # Warna Hijau Matrix
+            description="**Bot telah online dan berhasil di update!**\nBot audio Angelss siap digunakan dengan baik.",
+            color=0x2ecc71 
         )
-        embed.add_field(
-            name="📖 Panduan Penggunaan", 
-            value="Silahkan ketik `/help` untuk melihat daftar perintah terbaru.", 
-            inline=False
-        )
+        
+        # Menambahkan Banner Visual
+        embed.set_image(url="https://i.getpantry.cloud/apf/help_banner.gif")
+        
+        # Informasi Server, Latency, dan Guide 
+        embed.add_field(name="🛰️ Server Cluster", value="`Jakarta-ID`", inline=True)
+        embed.add_field(name="⚡ Latency", value=f"`{round(bot.latency * 1000)}ms`", inline=True)
+        embed.add_field(name="💡 Guide", value="Ketik `/help` untuk panduan", inline=False)
+        
+        # Menambahkan informasi waktu update terakhir agar makin keren
+        waktu_sekarang = discord.utils.utcnow().astimezone(discord.utils.utc).strftime('%d/%m/%Y %H:%M')
+        embed.add_field(name="📅 Terakhir Diupdate", value=f"`{waktu_sekarang} WIB`", inline=False)
+
         embed.set_footer(
             text="System Online • ikiii angels Project v16", 
             icon_url=bot.user.avatar.url if bot.user.avatar else None
@@ -80,7 +87,7 @@ async def on_ready():
         
         await channel.send(embed=embed)
     
-    print(f"✅ Logged in as {bot.user} - Notifikasi terkirim & channel dibersihkan!")
+    print(f"✅ Logged in as {bot.user} - Notifikasi Lengkap Terkirim!")
 
 
 # --- 3. QUEUE SYSTEM ---
