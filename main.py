@@ -48,7 +48,6 @@ bot = ModernBot()
 # --- TAMBAHAN: NOTIFIKASI BOT ONLINE (AUTO-CLEAN + FULL INFO) ---
 @bot.event
 async def on_ready():
-    # ID Channel 
     target_channel_id = 1456250414638043169 
     
     channel = bot.get_channel(target_channel_id)
@@ -68,16 +67,15 @@ async def on_ready():
             color=0x2ecc71 
         )
         
-        # Menambahkan Banner Visual
         embed.set_image(url="https://i.getpantry.cloud/apf/help_banner.gif")
         
-        # Informasi Server, Latency, dan Guide 
         embed.add_field(name="🛰️ Server Cluster", value="`Jakarta-ID`", inline=True)
         embed.add_field(name="⚡ Latency", value=f"`{round(bot.latency * 1000)}ms`", inline=True)
         embed.add_field(name="💡 Guide", value="Ketik `/help` untuk panduan", inline=False)
         
-        # Menambahkan informasi waktu update terakhir agar makin keren
-        waktu_sekarang = discord.utils.utcnow().astimezone(discord.utils.utc).strftime('%d/%m/%Y %H:%M')
+        # --- PERBAIKAN DI SINI ---
+        # Kita pakai datetime.datetime.now() yang lebih simpel
+        waktu_sekarang = datetime.datetime.now().strftime('%d/%m/%Y %H:%M')
         embed.add_field(name="📅 Terakhir Diupdate", value=f"`{waktu_sekarang} WIB`", inline=False)
 
         embed.set_footer(
