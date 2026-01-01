@@ -48,7 +48,7 @@ bot = ModernBot()
 @bot.event
 async def on_ready():
     # GANTI ANGKA DI BAWAH INI DENGAN ID CHANNEL TEXT KAMU
-    target_channel_id = 111122223333444455 
+    target_channel_id = 1456250414638043169 
     
     channel = bot.get_channel(target_channel_id)
     if channel:
