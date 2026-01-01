@@ -44,18 +44,28 @@ class ModernBot(commands.Bot):
 bot = ModernBot()
 
 
-# --- TAMBAHAN: NOTIFIKASI BOT ONLINE ---
+# --- TAMBAHAN: NOTIFIKASI BOT ONLINE (AUTO-CLEAN) ---
 @bot.event
 async def on_ready():
     # GANTI ANGKA DI BAWAH INI DENGAN ID CHANNEL TEXT KAMU
-    target_channel_id = 1456250414638043169 
+    target_channel_id = 111122223333444455 
     
     channel = bot.get_channel(target_channel_id)
     if channel:
+        # --- FITUR PEMBERSIH ---
+        # Bot akan mengecek 10 pesan terakhir, kalau ada pesan dari dirinya sendiri, akan dihapus.
+        try:
+            async for message in channel.history(limit=10):
+                if message.author == bot.user:
+                    await message.delete()
+        except Exception as e:
+            print(f"Gagal menghapus pesan lama: {e}")
+
+        # --- KIRIM PESAN BARU ---
         embed = discord.Embed(
             title="🚀 SYSTEM RELOADED & UPDATED",
-            description="**Bot telah online dan berhasil di update!**\nSistem audio v16 siap digunakan dengan performa maksimal.",
-            color=0x2ecc71 # Warna Hijau Matrix Keren
+            description="**Bot telah online dan berhasil di update!**\Bot audio Angelss siap digunakan dengan baik.",
+            color=0x2ecc71 # Warna Hijau Matrix
         )
         embed.add_field(
             name="📖 Panduan Penggunaan", 
@@ -63,16 +73,14 @@ async def on_ready():
             inline=False
         )
         embed.set_footer(
-            text="System Online • ikiii angels Project", 
+            text="System Online • ikiii angels Project v16", 
             icon_url=bot.user.avatar.url if bot.user.avatar else None
         )
-        # Menambahkan Thumbnail GIF biar terlihat canggih
         embed.set_thumbnail(url="https://i.gifer.com/7plQ.gif") 
         
         await channel.send(embed=embed)
     
-    print(f"✅ Logged in as {bot.user} - Notifikasi terkirim!")
-
+    print(f"✅ Logged in as {bot.user} - Notifikasi terkirim & channel dibersihkan!")
 
 
 # --- 3. QUEUE SYSTEM ---
