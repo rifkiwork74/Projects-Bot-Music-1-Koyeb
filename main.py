@@ -28,6 +28,7 @@ YTDL_OPTIONS = {
     'quiet': True,
     'no_warnings': True,
     'source_address': '0.0.0.0',
+    'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
 }
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
