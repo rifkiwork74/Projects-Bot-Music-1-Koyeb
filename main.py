@@ -45,7 +45,7 @@ FFMPEG_OPTIONS = {
         '-ac 2 '               # 2 Channels (Stereo)
         '-ar 48000 '           # Audio Rate 48.000 Hz (Wajib buat Discord!)
         '-f s16le '            # Format: Signed 16-bit Little Endian (Raw Audio)
-        '-af "volume=0.5" '    # Filter Volume biar gak pecah (bisa diatur 0.1 - 1.0)
+        '-af "volume=0.3" '    # Filter Volume biar gak pecah (bisa diatur 0.1 - 1.0)
     )
 }
 
@@ -87,7 +87,7 @@ async def on_ready():
             color=0x2ecc71 
         )
         
-        embed.set_image(url="https://drive.google.com/file/d/1SUNCon26pfSVpMtoy_Rs1HqzeLJENL7D/view?usp=drivesdk")
+        embed.set_image(url="https://i.ibb.co.com/KppFQ6N6/Logo1.gif")
         
         embed.add_field(name="🛰️ Server Cluster", value="`Jakarta-ID`", inline=True)
         embed.add_field(name="⚡ Latency", value=f"`{round(bot.latency * 1000)}ms`", inline=True)
@@ -161,46 +161,83 @@ async def on_voice_state_update(member, before, after):
                 await vc.disconnect() # Cabut dari voice
 
 
-# --- 5. UI: PEMILIH LAGU (NAVIGASI + AUTO-DELETE + FULL 10 OPTIONS) ---
+
+# --- 5. UI: PEMILIH LAGU (NAVIGASI + AUTO-DELETE + 5 PER PAGE) ---
 class SearchControlView(discord.ui.View):
     def __init__(self, entries, user, page=0):
         super().__init__(timeout=60)
         self.entries = entries
         self.user = user
         self.page = page
-        self.start_idx = page * 3
-        self.end_idx = self.start_idx + 3
-        self.current_slice = entries[self.start_idx:self.end_idx]
+        self.per_page = 5  # Sesuai permintaan: 5 lagu per halaman
+        
+    def create_embed(self):
+        start = self.page * self.per_page
+        end = start + self.per_page
+        current_songs = self.entries[start:end]
+        
+        total_pages = (len(self.entries) - 1) // self.per_page + 1
+        
+        description = ""
+        for i, entry in enumerate(current_songs):
+            # Penomoran tetap berlanjut (1, 2, 3... sampai 15)
+            description += f"**{start + i + 1}.** {entry['title'][:65]}\n"
+            
+        embed = discord.Embed(
+            title="🎵 Hasil Pencarian",
+            description=description,
+            color=0x3498db
+        )
+        embed.set_footer(text=f"Halaman {self.page + 1} dari {total_pages} | Pilih nomor di bawah")
+        return embed
 
     @discord.ui.button(label="⬅️ Back", style=discord.ButtonStyle.gray)
     async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.user: return
+        if interaction.user != self.user: 
+            return await interaction.response.send_message("Bukan menu kamu!", ephemeral=True)
+        
         if self.page > 0:
-            await interaction.response.edit_message(view=SearchControlView(self.entries, self.user, self.page - 1))
+            self.page -= 1
+            await interaction.response.edit_message(embed=self.create_embed(), view=self)
 
     @discord.ui.button(label="Next ➡️", style=discord.ButtonStyle.gray)
     async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.user: return
-        if (self.page + 1) * 3 < len(self.entries):
-            await interaction.response.edit_message(view=SearchControlView(self.entries, self.user, self.page + 1))
+        if interaction.user != self.user: 
+            return await interaction.response.send_message("Bukan menu kamu!", ephemeral=True)
+            
+        if (self.page + 1) * self.per_page < len(self.entries):
+            self.page += 1
+            await interaction.response.edit_message(embed=self.create_embed(), view=self)
 
     @discord.ui.button(label="🎯 Pilih Lagu", style=discord.ButtonStyle.primary)
     async def pick(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user != self.user: return
         
-        # Menampilkan semua 10 lagu dari hasil pencarian (bukan cuma yang di halaman itu)
-        options = [discord.SelectOption(label=f"Lagu Nomor {i + 1}", value=entry['webpage_url'], description=entry['title'][:50]) for i, entry in enumerate(self.entries)]
-        select = discord.ui.Select(placeholder="Pilih nomor lagu (1-10)...", options=options)
+        # Mengambil semua hasil pencarian untuk dimasukkan ke dropdown
+        options = []
+        for i, entry in enumerate(self.entries):
+            options.append(discord.SelectOption(
+                label=f"Lagu Nomor {i + 1}", 
+                value=entry['webpage_url'], 
+                description=entry['title'][:50]
+            ))
+            
+        select = discord.ui.Select(placeholder=f"Pilih nomor lagu (1-{len(self.entries)})...", options=options)
         
         async def select_callback(inter: discord.Interaction):
             await inter.response.defer()
             await play_music(inter, select.values[0])
-            try: await interaction.delete_original_response() # Pesan pencarian otomatis hilang
+            try: await interaction.delete_original_response() 
             except: pass
 
         select.callback = select_callback
-        new_view = discord.ui.View(timeout=30); new_view.add_item(select)
+        new_view = discord.ui.View(timeout=30)
+        new_view.add_item(select)
+        
         await interaction.response.edit_message(content="✅ Silakan pilih nomor lagu di bawah ini:", view=new_view)
+
+
+
 
 # --- 6. UI: DASHBOARD & VOLUME ---
 class VolumeControlView(discord.ui.View):
@@ -362,7 +399,7 @@ async def play_music(interaction, url):
 
 
 
-# --- 8. COMMANDS ---
+# --- 8. COMMANDS (UPDATE PADA BAGIAN PLAY) ---
 @bot.tree.command(name="play", description="Putar musik")
 async def play(interaction: discord.Interaction, cari: str):
     await interaction.response.defer()
@@ -371,15 +408,20 @@ async def play(interaction: discord.Interaction, cari: str):
     
     if "http" in cari: 
         await play_music(interaction, cari)
-        # FIX: Hapus delete_after di sini
         await interaction.followup.send("✅ Permintaan diproses!", ephemeral=True)
     else:
-        data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(f"ytsearch10:{cari}", download=False))
+        # Mencari 15 lagu (3 halaman x 5 lagu) agar pencarian cepat
+        data = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: ytdl.extract_info(f"ytsearch15:{cari}", download=False)
+        )
+        
         if not data['entries']: 
             return await interaction.followup.send("❌ Tidak ketemu.", ephemeral=True)
             
-        embed = discord.Embed(title="🎵 Hasil Pencarian", description="\n".join([f"**{i+1}.** {e['title'][:60]}" for i,e in enumerate(data['entries'])]), color=0x3498db)
-        await interaction.followup.send(embed=embed, view=SearchControlView(data['entries'], interaction.user))
+        # Memanggil View yang sudah diperbaiki
+        view = SearchControlView(data['entries'], interaction.user)
+        await interaction.followup.send(embed=view.create_embed(), view=view)
+        
 
 
 @bot.tree.command(name="stop", description="Stop musik & hapus antrean")
