@@ -12,23 +12,42 @@ from collections import deque
 TOKEN = os.environ['DISCORD_TOKEN']
 COOKIES_FILE = 'youtube_cookies.txt'
 
+# 1. SETUP YT-DLP
+# Kita minta format m4a (AAC) karena decoding AAC ke PCM di FFmpeg
+# biasanya lebih ringan CPU-nya daripada decoding Opus (Webm) ke PCM.
+# Ini membantu hemat resource di Koyeb.
 YTDL_OPTIONS = {
-    'format': 'bestaudio/best',
+    'format': 'bestaudio[ext=m4a]/bestaudio/best',
     'noplaylist': True,
     'default_search': 'ytsearch15',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'nocheckcertificate': True,
-    'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
+    'source_address': '0.0.0.0',
 }
-
-FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin',
-    'options': '-vn -b:a 192k -threads 2' # Menghapus loudnorm & menurunkan bitrate agar tidak buffer
-}
-
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+
+# 2. SETUP FFMPEG (INI KUNCINYA)
+# Kita hapus bitrate limit (-b:a) dan paksa output ke PCM 48000Hz.
+FFMPEG_OPTIONS = {
+    'before_options': (
+        '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 '
+        '-nostdin'
+    ),
+    'options': (
+        '-vn '                 # No Video
+        '-ac 2 '               # 2 Channels (Stereo)
+        '-ar 48000 '           # Audio Rate 48.000 Hz (Wajib buat Discord!)
+        '-f s16le '            # Format: Signed 16-bit Little Endian (Raw Audio)
+        '-af "volume=0.5" '    # Filter Volume biar gak pecah (bisa diatur 0.1 - 1.0)
+    )
+}
+
 
 # --- 2. SETUP BOT ---
 class ModernBot(commands.Bot):
