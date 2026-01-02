@@ -452,7 +452,7 @@ async def help_cmd(interaction: discord.Interaction):
     )
     emb_dev = discord.Embed(title="👨‍💻 Developer Profile", color=0x9b59b6)
     emb_dev.description = (f"**Developer :** ikiii\n**User ID :** `{dev_id}`\n**Status :** Active - IT - Engineering\n**Contact :** <@{dev_id}>\n\n**Kata - kata :**\nBot ini dibuat oleh seorang yang bernama **ikiii** yang bijaksana, dan yang melakukan segala hal apapun diawali dengan berdo'a 🤲🏻, amiin.")
-    emb_dev.set_image(url="https://i.getpantry.cloud/apf/help_banner.gif")
+    emb_dev.set_image(url="https://drive.google.com/file/d/1SUNCon26pfSVpMtoy_Rs1HqzeLJENL7D/view?usp=drivesdk")
     emb_dev.set_footer(text="Projects Bot • Music Ikiii hehehe ....", icon_url=interaction.user.display_avatar.url)
     await interaction.response.send_message(embeds=[emb_guide, emb_dev])
 
