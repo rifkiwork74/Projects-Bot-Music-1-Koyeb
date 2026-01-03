@@ -36,14 +36,7 @@ FFMPEG_OPTIONS = {
         '-probesize 1M '       # Kita turunkan dari 10M ke 1M agar bot lebih cepat sinkron
         '-analyzeduration 1M'
     ),
-    'options': (
-        '-vn '
-        '-af "volume=1.0, aresample=48000" '
-        '-packet_loss 5 '      # Menangani jika ada data yang hilang di jalan
-        '-frame_duration 20 '  # Standar emas Discord agar tidak pecah
-        '-bitrate 128k '       # Kita pasang angka standar lagi untuk stabilitas (Safe Zone)
-        '-compression_level 10' # Mengoptimalkan kompresi agar tidak berat di koneksi
-    )
+    'options': '-vn -af "volume=1.0, aresample=48000" -content_type audio/mpeg -reconnect_at_eof 1'
 }
 
 
