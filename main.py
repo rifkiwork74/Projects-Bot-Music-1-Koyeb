@@ -12,9 +12,6 @@ from collections import deque
 TOKEN = os.environ['DISCORD_TOKEN']
 COOKIES_FILE = 'youtube_cookies.txt'
 
-# --- 1. KONFIGURASI GLOBAL ---
-TOKEN = os.environ['DISCORD_TOKEN']
-COOKIES_FILE = 'youtube_cookies.txt'
 
 # 1. SETUP YT-DLP (DIPERBAIKI UNTUK SUARA JERNIH)
 YTDL_OPTIONS = {
@@ -179,34 +176,30 @@ async def on_voice_state_update(member, before, after):
 
 
 
-# --- 5. UI: PEMILIH LAGU (NAVIGASI + AUTO-DELETE + 5 PER PAGE) ---
 class SearchControlView(discord.ui.View):
     def __init__(self, entries, user, page=0):
         super().__init__(timeout=60)
-        self.entries = entries  # Data 10 lagu hasil search
+        self.entries = entries
         self.user = user
         self.page = page
         self.per_page = 5
         self.update_view()
 
     def update_view(self):
-        # Membersihkan komponen lama agar tidak menumpuk saat ganti halaman
         self.clear_items()
         
-        # Mengambil potongan lagu sesuai halaman (1-5 atau 6-10)
         start = self.page * self.per_page
         end = start + self.per_page
         current_batch = self.entries[start:end]
 
-        # 1. MEMBUAT DROPDOWN (SELECT MENU)
         options = []
         for i, entry in enumerate(current_batch):
-            real_idx = start + i + 1  # Penomoran 1-10
+            real_idx = start + i + 1
             options.append(discord.SelectOption(
                 label=f"Nomor {real_idx}", 
                 value=entry['webpage_url'], 
                 description=entry['title'][:50],
-                emoji="🎶"  # Emoji nada musik untuk daftar lagu
+                emoji="🎶"
             ))
             
         select = discord.ui.Select(
@@ -214,15 +207,11 @@ class SearchControlView(discord.ui.View):
             options=options
         )
         
-        # Callback saat user memilih lagu di dropdown
         async def select_callback(interaction: discord.Interaction):
             if interaction.user != self.user:
                 return await interaction.response.send_message("❌ Ini bukan menu kamu!", ephemeral=True)
             
-            # WAJIB: Defer di awal agar tidak "Interaction Failed"
             await interaction.response.defer()
-            
-            # Baru panggil fungsinya
             await play_music(interaction, select.values[0])
             
             try:
@@ -230,13 +219,13 @@ class SearchControlView(discord.ui.View):
             except:
                 pass
 
-        # 2. TOMBOL NAVIGASI PREVIOUS (⬅️)
+        select.callback = select_callback
+        # --- BARIS PENTING DI BAWAH INI TADI HILANG ---
+        self.add_item(select) 
+        # ---------------------------------------------
+
         if self.page > 0:
-            btn_prev = discord.ui.Button(
-                label="Halaman 1", 
-                emoji="⬅️", 
-                style=discord.ButtonStyle.gray
-            )
+            btn_prev = discord.ui.Button(label="Halaman 1", emoji="⬅️", style=discord.ButtonStyle.gray)
             async def prev_callback(interaction: discord.Interaction):
                 if interaction.user != self.user: return
                 self.page = 0
@@ -245,13 +234,8 @@ class SearchControlView(discord.ui.View):
             btn_prev.callback = prev_callback
             self.add_item(btn_prev)
 
-        # 3. TOMBOL NAVIGASI NEXT (➡️)
         if self.page == 0 and len(self.entries) > 5:
-            btn_next = discord.ui.Button(
-                label="Halaman 2", 
-                emoji="➡️", 
-                style=discord.ButtonStyle.gray
-            )
+            btn_next = discord.ui.Button(label="Halaman 2", emoji="➡️", style=discord.ButtonStyle.gray)
             async def next_callback(interaction: discord.Interaction):
                 if interaction.user != self.user: return
                 self.page = 1
@@ -260,23 +244,15 @@ class SearchControlView(discord.ui.View):
             btn_next.callback = next_callback
             self.add_item(btn_next)
 
-        # 4. TOMBOL BATAL (✖️)
-        btn_cancel = discord.ui.Button(
-            label="Batalkan", 
-            emoji="✖️", 
-            style=discord.ButtonStyle.danger
-        )
+        btn_cancel = discord.ui.Button(label="Batalkan", emoji="✖️", style=discord.ButtonStyle.danger)
         async def cancel_callback(interaction: discord.Interaction):
             if interaction.user == self.user:
-                try: 
-                    await interaction.message.delete()
-                except: 
-                    pass
+                try: await interaction.message.delete()
+                except: pass
         btn_cancel.callback = cancel_callback
         self.add_item(btn_cancel)
 
     def create_embed(self):
-        """Membuat tampilan teks Embed yang rapi dengan emoji"""
         start = self.page * self.per_page
         end = start + self.per_page
         current_songs = self.entries[start:end]
@@ -284,18 +260,10 @@ class SearchControlView(discord.ui.View):
         description = "✨ **Silakan pilih lagu yang ingin diputar:**\n\n"
         for i, entry in enumerate(current_songs):
             real_idx = start + i + 1
-            # Menambah emoji bullet point agar lebih estetik
             description += f"✨ `{real_idx}.` {entry['title'][:60]}...\n"
             
-        embed = discord.Embed(
-            title="🔍 Hasil Pencarian Musik",
-            description=description,
-            color=0xf1c40f # Warna kuning emas agar terlihat premium
-        )
-        embed.set_footer(
-            text=f"Halaman {self.page + 1} dari 2 • Gunakan menu dropdown di bawah", 
-            icon_url=self.user.display_avatar.url
-        )
+        embed = discord.Embed(title="🔍 Hasil Pencarian Musik", description=description, color=0xf1c40f)
+        embed.set_footer(text=f"Halaman {self.page + 1} dari 2 • Gunakan menu dropdown di bawah", icon_url=self.user.display_avatar.url)
         return embed
 
 
@@ -476,50 +444,51 @@ async def start_stream(interaction, url):
     if not vc: return
     
     try:
-        # 1. Pastikan audio sebelumnya benar-benar bersih
+        # Stop jika masih ada lagu sisa
         if vc.is_playing() or vc.is_paused():
             vc.stop()
         
-        await asyncio.sleep(0.5) # Memberi waktu CPU server bernapas
+        # Jeda sebentar agar FFmpeg lama mati total
+        await asyncio.sleep(0.5)
 
-        # 2. Ambil data (Search/Link)
+        # Ambil info lagu (Penting: handle jika url ternyata hasil search)
         data = await asyncio.get_event_loop().run_in_executor(
             None, lambda: ytdl.extract_info(url, download=False)
         )
         
-        # Jika data berupa playlist/search result, ambil entri pertama
+        # Jika data adalah playlist hasil search, ambil index pertama
         if 'entries' in data:
             data = data['entries'][0]
 
-        # 3. Setup Audio
-        # Gunakan link langsung dari data['url']
+        # Inisialisasi Audio
         audio_source = discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS)
         source = discord.PCMVolumeTransformer(audio_source, volume=q.volume) 
         
         def after_playing(error):
             if error: print(f"Player error: {error}")
+            # Panggil antrean berikutnya
             asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
             
         vc.play(source, after=after_playing)
         
-        # 4. Dashboard UI Management
+        # Bersihkan dashboard lama
         if q.last_dashboard:
             try: await q.last_dashboard.delete()
             except: pass
             
         emb = discord.Embed(
             title="🎶 Sedang Diputar", 
-            description=f"**[{data['title']}]({data['webpage_url']})**", 
+            description=f"**[{data['title']}]({data.get('webpage_url', url)})**", 
             color=0x2ecc71
         )
         emb.set_thumbnail(url=data.get('thumbnail'))
-        emb.set_footer(text=f"Permintaan: {interaction.user.display_name}")
+        emb.set_footer(text=f"Permintaan: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         
         q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
         
     except Exception as e:
-        print(f"CRITICAL ERROR start_stream: {e}")
-        # Jangan biarkan bot diam jika error, paksa lanjut ke antrean berikutnya
+        print(f"Error pada start_stream: {e}")
+        # Jika gagal, jangan biarkan bot macet, paksa pindah lagu berikutnya
         asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
 
 
