@@ -13,9 +13,9 @@ TOKEN = os.environ['DISCORD_TOKEN']
 COOKIES_FILE = 'youtube_cookies.txt'
 
 
-# 1. SETUP YT-DLP (DIPERBAIKI UNTUK SUARA JERNIH)
+# 1. SETUP YT-DLP (DIPAKSA AMBIL KUALITAS TERBAIK)
 YTDL_OPTIONS = {
-    'format': 'bestaudio/best', 
+    'format': 'bestaudio/best',
     'noplaylist': True,
     'default_search': 'ytsearch10',
     'nocheckcertificate': True,
@@ -27,18 +27,25 @@ YTDL_OPTIONS = {
     'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
 }
 
-# --- INI BARIS YANG TADI HILANG ---
-ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
-# ---------------------------------
-
-# 2. SETUP FFMPEG (DIPERBAIKI AGAR TIDAK KUSUT/STUTTER)
+# 2. SETUP FFMPEG (HD AUDIO SETUP - SEPERTI BMO)
 FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -filter:a "volume=0.5" -b:a 320k' 
+    'before_options': (
+        '-reconnect 1 '
+        '-reconnect_streamed 1 '
+        '-reconnect_delay_max 5'
+    ),
+    'options': (
+        '-vn '
+        '-filter:a "volume=1.0, aresample=48000" ' # Menstabilkan sample rate ke 48kHz
+        '-b:a 128k '                              # Bitrate standar Discord (Cukup untuk HD)
+        '-threads 1'                               # Membatasi thread agar tidak berat di server
+    )
 }
 
 
 
+# INISIALISASI YT-DLP (TIDAK AKAN TERTINGGAL LAGI)
+ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 
 
 # --- 2. SETUP BOT ---
@@ -444,53 +451,55 @@ async def start_stream(interaction, url):
     if not vc: return
     
     try:
-        # Stop jika masih ada lagu sisa
+        # 1. Bersihkan lagu lama
         if vc.is_playing() or vc.is_paused():
             vc.stop()
         
-        # Jeda sebentar agar FFmpeg lama mati total
         await asyncio.sleep(0.5)
 
-        # Ambil info lagu (Penting: handle jika url ternyata hasil search)
+        # 2. Ambil data dari YouTube
         data = await asyncio.get_event_loop().run_in_executor(
             None, lambda: ytdl.extract_info(url, download=False)
         )
         
-        # Jika data adalah playlist hasil search, ambil index pertama
         if 'entries' in data:
             data = data['entries'][0]
 
-        # Inisialisasi Audio
-        audio_source = discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS)
-        source = discord.PCMVolumeTransformer(audio_source, volume=q.volume) 
+        # 3. BAGIAN YANG KAMU BINGUNG (Inisialisasi Audio Opus)
+        # Kita pakai from_probe agar dia otomatis menyesuaikan bitrate terbaik
+        source = await discord.FFmpegOpusAudio.from_probe(data['url'], **FFMPEG_OPTIONS)
         
+        # 4. Fungsi callback setelah lagu selesai
         def after_playing(error):
             if error: print(f"Player error: {error}")
-            # Panggil antrean berikutnya
             asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
             
+        # 5. Mulai Putar
         vc.play(source, after=after_playing)
         
-        # Bersihkan dashboard lama
+        # 6. Dashboard (Hapus lama, kirim baru)
         if q.last_dashboard:
             try: await q.last_dashboard.delete()
             except: pass
             
         emb = discord.Embed(
-            title="🎶 Sedang Diputar", 
+            title="🎶 Sedang Diputar (HD Mode)", 
             description=f"**[{data['title']}]({data.get('webpage_url', url)})**", 
             color=0x2ecc71
         )
         emb.set_thumbnail(url=data.get('thumbnail'))
-        emb.set_footer(text=f"Permintaan: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+        emb.set_footer(text=f"Permintaan: {interaction.user.display_name}")
         
         q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
         
     except Exception as e:
-        print(f"Error pada start_stream: {e}")
-        # Jika gagal, jangan biarkan bot macet, paksa pindah lagu berikutnya
+        print(f"CRITICAL ERROR start_stream: {e}")
+        # Kalau gagal (misal server gak support Opus), bot bakal lanjut ke lagu berikutnya
         asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
 
+
+        
+  
 
 
 async def play_music(interaction, url):
