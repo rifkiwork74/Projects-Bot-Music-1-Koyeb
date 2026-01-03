@@ -37,8 +37,9 @@ ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 # 2. SETUP FFMPEG (DIPERBAIKI AGAR TIDAK KUSUT/STUTTER)
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -b:a 128k -vol 256' 
+    'options': '-vn -filter:a "volume=1.0" -b:a 128k' 
 }
+
 
 
 
@@ -218,18 +219,16 @@ class SearchControlView(discord.ui.View):
             if interaction.user != self.user:
                 return await interaction.response.send_message("❌ Ini bukan menu kamu!", ephemeral=True)
             
+            # WAJIB: Defer di awal agar tidak "Interaction Failed"
             await interaction.response.defer()
-            # Memanggil logika pemutaran musik
+            
+            # Baru panggil fungsinya
             await play_music(interaction, select.values[0])
             
-            # Berikan notifikasi singkat lalu hapus pesan pencarian
             try:
                 await interaction.delete_original_response()
             except:
                 pass
-
-        select.callback = select_callback
-        self.add_item(select)
 
         # 2. TOMBOL NAVIGASI PREVIOUS (⬅️)
         if self.page > 0:
@@ -472,56 +471,55 @@ async def next_logic(interaction):
 
 
 async def start_stream(interaction, url):
-    """Fungsi utama untuk streaming audio dari YouTube dengan kualitas stabil"""
     q = get_queue(interaction.guild_id)
     vc = interaction.guild.voice_client
     if not vc: return
     
     try:
-        # 1. Membersihkan FFmpeg lama agar tidak tabrakan (Safety Cleanup)
+        # 1. Pastikan audio sebelumnya benar-benar bersih
         if vc.is_playing() or vc.is_paused():
             vc.stop()
-            # Jeda 0.8 detik seperti kodemu agar FFmpeg benar-benar shutdown
-            await asyncio.sleep(0.8) 
+        
+        await asyncio.sleep(0.5) # Memberi waktu CPU server bernapas
 
-        # 2. Ambil data dari YT-DLP (Menggunakan Executor agar tidak lag)
+        # 2. Ambil data (Search/Link)
         data = await asyncio.get_event_loop().run_in_executor(
             None, lambda: ytdl.extract_info(url, download=False)
         )
         
-        # 3. Setup Audio Source (Gunakan Bitrate 128k dari FFMPEG_OPTIONS agar jernih)
+        # Jika data berupa playlist/search result, ambil entri pertama
+        if 'entries' in data:
+            data = data['entries'][0]
+
+        # 3. Setup Audio
+        # Gunakan link langsung dari data['url']
         audio_source = discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS)
         source = discord.PCMVolumeTransformer(audio_source, volume=q.volume) 
         
-        # 4. Fungsi Callback: Ini yang menjaga antrean tetap berurutan
         def after_playing(error):
             if error: print(f"Player error: {error}")
-            # PENTING: Antrean selanjutnya HANYA dipanggil di sini
             asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
             
-        # Mulai putar dari 00:00
         vc.play(source, after=after_playing)
         
-        # 5. Update UI Dashboard (Hapus yang lama, kirim yang baru)
+        # 4. Dashboard UI Management
         if q.last_dashboard:
             try: await q.last_dashboard.delete()
             except: pass
             
         emb = discord.Embed(
             title="🎶 Sedang Diputar", 
-            description=f"**[{data['title']}]({url})**", 
+            description=f"**[{data['title']}]({data['webpage_url']})**", 
             color=0x2ecc71
         )
         emb.set_thumbnail(url=data.get('thumbnail'))
-        # Menambah info siapa yang memutar lagu ini
-        emb.set_footer(text=f"Permintaan: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+        emb.set_footer(text=f"Permintaan: {interaction.user.display_name}")
         
         q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
         
     except Exception as e:
-        print(f"Error pada start_stream: {e}")
-        # Jika gagal, jangan biarkan bot stuck, lanjut ke antrean berikutnya
-        await interaction.channel.send(f"⚠️ Gagal memutar lagu, mencoba lagu berikutnya...", delete_after=5)
+        print(f"CRITICAL ERROR start_stream: {e}")
+        # Jangan biarkan bot diam jika error, paksa lanjut ke antrean berikutnya
         asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
 
 
