@@ -28,12 +28,15 @@ YTDL_OPTIONS = {
 }
 
 # 2. SETUP FFMPEG (HD AUDIO SETUP - SEPERTI BMO)
+
+
+# FFMPEG DENGAN AUTO BITRATE (OPUS NATIVE)
 FFMPEG_OPTIONS = {
     # 'before_options' adalah perintah yang dijalankan SEBELUM mengambil data (untuk analisis)
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 10M -analyzeduration 10M',
     
     # 'options' adalah perintah saat musik SEDANG berjalan (kualitas suara)
-    'options': '-vn -af "aresample=48000" -b:a 192k'
+    'options': '-vn -af "volume=1.0, aresample=48000" -b:a 192k'
 }
 
 
@@ -446,11 +449,13 @@ async def start_stream(interaction, url):
     if not vc: return
     
     try:
+        # 1. Bersihkan lagu lama
         if vc.is_playing() or vc.is_paused():
             vc.stop()
         
         await asyncio.sleep(0.5)
 
+        # 2. Ambil data dari YouTube
         data = await asyncio.get_event_loop().run_in_executor(
             None, lambda: ytdl.extract_info(url, download=False)
         )
@@ -458,22 +463,20 @@ async def start_stream(interaction, url):
         if 'entries' in data:
             data = data['entries'][0]
 
-        # REVISI DI SINI: Tambahkan catch error khusus untuk Opus
-        try:
-            source = await discord.FFmpegOpusAudio.from_probe(data['url'], **FFMPEG_OPTIONS)
-        except Exception as e:
-            print(f"Opus Error: {e}. Mengalihkan ke PCM Mode...")
-            # Jika server Koyeb tidak support Opus, dia akan balik ke mode biasa
-            source = discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS)
-            source = discord.PCMVolumeTransformer(source, volume=q.volume)
+        # 3. BAGIAN YANG KAMU BINGUNG (Inisialisasi Audio Opus)
+        # Kita pakai from_probe agar dia otomatis menyesuaikan bitrate terbaik
+        source = await discord.FFmpegOpusAudio.from_probe(data['url'], **FFMPEG_OPTIONS)
         
+        
+        # 4. Fungsi callback setelah lagu selesai
         def after_playing(error):
             if error: print(f"Player error: {error}")
             asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
             
+        # 5. Mulai Putar
         vc.play(source, after=after_playing)
         
-        # Sisa kode dashboard tetap sama...
+        # 6. Dashboard (Hapus lama, kirim baru)
         if q.last_dashboard:
             try: await q.last_dashboard.delete()
             except: pass
@@ -489,8 +492,10 @@ async def start_stream(interaction, url):
         q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
         
     except Exception as e:
-        print(f"CRITICAL ERROR: {e}")
+        print(f"CRITICAL ERROR start_stream: {e}")
+        # Kalau gagal (misal server gak support Opus), bot bakal lanjut ke lagu berikutnya
         asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
+
 
         
   
