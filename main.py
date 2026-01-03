@@ -30,7 +30,7 @@ YTDL_OPTIONS = {
 # 2. SETUP FFMPEG (HD AUDIO SETUP - SEPERTI BMO)
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 1M -analyzeduration 1M',
-    'options': '-vn -af "volume=1.0, aresample=48000"' 
+    'options': '-vn -af "volume=1.0, aresample=48000" -b:a 192k' 
 }
 
 
