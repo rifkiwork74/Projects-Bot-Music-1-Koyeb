@@ -34,7 +34,7 @@ ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 # 2. SETUP FFMPEG (DIPERBAIKI AGAR TIDAK KUSUT/STUTTER)
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -filter:a "volume=1.0" -b:a 320k' 
+    'options': '-vn -filter:a "volume=0.5" -b:a 320k' 
 }
 
 
