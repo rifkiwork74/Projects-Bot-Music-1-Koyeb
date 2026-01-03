@@ -357,7 +357,7 @@ class MusicDashboard(discord.ui.View):
         view = discord.ui.View(); view.add_item(select)
         await interaction.response.send_message(embed=emb, view=view, ephemeral=True)
 
-	@discord.ui.button(label="Skip", emoji="⏭️", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Skip", emoji="⏭️", style=discord.ButtonStyle.primary)
     async def sk(self, interaction: discord.Interaction, button: discord.ui.Button):
         q = get_queue(self.guild_id)
         vc = interaction.guild.voice_client
@@ -365,20 +365,14 @@ class MusicDashboard(discord.ui.View):
         if not vc or not vc.is_playing():
             return await interaction.response.send_message("❌ **Informasi:** Tidak ada lagu yang sedang diputar untuk di-skip.", ephemeral=True)
 
-        # 1. Ambil info lagu yang sedang diputar (yang akan di-skip)
-        # Kita ambil dari dashboard terakhir yang tersimpan di queue
         current_title = "Lagu saat ini"
         if q.last_dashboard and q.last_dashboard.embeds:
-            # Mengambil judul dari embed dashboard yang sedang tampil
             current_title = q.last_dashboard.embeds[0].description.split('\n')[1] 
 
-        # 2. Cek apakah ada lagu selanjutnya di antrean
         next_info = "Tidak ada lagu selanjutnya di antrean. Bot akan standby. ✨"
         if q.queue:
-            next_song = q.queue[0] # Lihat lagu pertama di antrean tanpa menghapusnya
-            next_info = f"⏭️ **Selanjutnya:** {next_song['title']}"
+            next_info = f"⏭️ **Selanjutnya:** {q.queue[0]['title']}"
 
-        # 3. Buat Embed yang Elegan
         embed = discord.Embed(
             title="⏭️ MUSIC SKIP SYSTEM",
             description=(
@@ -387,15 +381,13 @@ class MusicDashboard(discord.ui.View):
                 f"📥 **Status Antrean:** {next_info}\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━"
             ),
-            color=0xe74c3c # Warna merah elegan
+            color=0xe74c3c
         )
         embed.set_footer(text="Gunakan /play untuk menambah antrean baru", icon_url=interaction.user.display_avatar.url)
 
-        # Hentikan lagu (ini akan memicu fungsi after_playing/next_logic otomatis)
         vc.stop()
-        
-        # Kirim notifikasi publik
         await interaction.response.send_message(embed=embed, delete_after=15)
+
         
     @discord.ui.button(label="Stop", emoji="⏹️", style=discord.ButtonStyle.danger)
     async def st(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -463,11 +455,10 @@ async def start_stream(interaction, url):
         # 2. Ambil data dari YT-DLP
         data = await asyncio.get_event_loop().run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         
-        # 3. Setup Audio Source
-        source = discord.PCMVolumeTransformer(
-            audio_source = discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS)
-			source = discord.PCMVolumeTransformer(audio_source, volume=q.volume) 
-        )
+        # 3. Setup Audio Source (DIPERBAIKI)
+        audio_source = discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS)
+        source = discord.PCMVolumeTransformer(audio_source, volume=q.volume) 
+        
         
         # 4. Fungsi Callback setelah lagu selesai
         def after_playing(error):
