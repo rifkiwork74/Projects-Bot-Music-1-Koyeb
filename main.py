@@ -30,8 +30,20 @@ YTDL_OPTIONS = {
 # 2. SETUP FFMPEG (HD AUDIO SETUP - SEPERTI BMO)
 
 FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 10M -analyzeduration 10M',
-    'options': '-vn -af "volume=1.0, aresample=48000"' 
+    'before_options': (
+        '-reconnect 1 '
+        '-reconnect_streamed 1 '
+        '-reconnect_delay_max 5 '
+        '-probesize 10M '
+        '-analyzeduration 10M'
+    ),
+    'options': (
+        '-vn '
+        '-af "volume=1.0, aresample=48000" '
+        '-buffer_size 512k '   # Menambah cadangan data agar tidak putus saat koneksi goyang
+        '-frame_duration 20 '  # Memperkecil delay pengiriman paket suara ke Discord
+        '-threads 1'           # Memastikan CPU tidak rebutan tugas yang bikin lag
+    )
 }
 
 
