@@ -28,21 +28,21 @@ YTDL_OPTIONS = {
 }
 
 # 2. SETUP FFMPEG (HD AUDIO SETUP - SEPERTI BMO)
-
 FFMPEG_OPTIONS = {
     'before_options': (
         '-reconnect 1 '
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
-        '-probesize 10M '
-        '-analyzeduration 10M'
+        '-probesize 1M '       # Kita turunkan dari 10M ke 1M agar bot lebih cepat sinkron
+        '-analyzeduration 1M'
     ),
     'options': (
         '-vn '
         '-af "volume=1.0, aresample=48000" '
-        '-buffer_size 512k '   # Menambah cadangan data agar tidak putus saat koneksi goyang
-        '-frame_duration 20 '  # Memperkecil delay pengiriman paket suara ke Discord
-        '-threads 1'           # Memastikan CPU tidak rebutan tugas yang bikin lag
+        '-packet_loss 5 '      # Menangani jika ada data yang hilang di jalan
+        '-frame_duration 20 '  # Standar emas Discord agar tidak pecah
+        '-bitrate 128k '       # Kita pasang angka standar lagi untuk stabilitas (Safe Zone)
+        '-compression_level 10' # Mengoptimalkan kompresi agar tidak berat di koneksi
     )
 }
 
