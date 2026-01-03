@@ -34,7 +34,7 @@ FFMPEG_OPTIONS = {
         '-reconnect_streamed 1'
         '-reconnect_delay_max 5'
     ),
-    'options': '-vn -af "volume=1.0, aresample=48000" -content_type audio/mpeg -reconnect_at_eof 1'
+    'options': '-vn -af "volume=1.0, -content_type audio/mpeg -reconnect_at_eof 1'
 }
 
 
