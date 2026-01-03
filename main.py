@@ -33,8 +33,8 @@ FFMPEG_OPTIONS = {
         '-reconnect 1 '
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
-        '-probesize 1M '       # Kita turunkan dari 10M ke 1M agar bot lebih cepat sinkron
-        '-analyzeduration 1M'
+        '-probesize 5M '       # Kita turunkan dari 10M ke 1M agar bot lebih cepat sinkron
+        '-analyzeduration 5M'
     ),
     'options': '-vn -af "volume=1.0, aresample=48000" -content_type audio/mpeg -reconnect_at_eof 1'
 }
