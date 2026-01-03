@@ -12,9 +12,13 @@ from collections import deque
 TOKEN = os.environ['DISCORD_TOKEN']
 COOKIES_FILE = 'youtube_cookies.txt'
 
+# --- 1. KONFIGURASI GLOBAL ---
+TOKEN = os.environ['DISCORD_TOKEN']
+COOKIES_FILE = 'youtube_cookies.txt'
+
 # 1. SETUP YT-DLP (DIPERBAIKI UNTUK SUARA JERNIH)
 YTDL_OPTIONS = {
-    'format': 'bestaudio/best', # Mengambil kualitas audio terbaik
+    'format': 'bestaudio/best', 
     'noplaylist': True,
     'default_search': 'ytsearch10',
     'nocheckcertificate': True,
@@ -26,11 +30,16 @@ YTDL_OPTIONS = {
     'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
 }
 
+# --- INI BARIS YANG TADI HILANG ---
+ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+# ---------------------------------
+
 # 2. SETUP FFMPEG (DIPERBAIKI AGAR TIDAK KUSUT/STUTTER)
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -b:a 128k -vol 256' # Memastikan bitrate stabil dan volume dasar pas
+    'options': '-vn -b:a 128k -vol 256' 
 }
+
 
 
 
