@@ -42,7 +42,7 @@ FFMPEG_OPTIONS = {
         '-af "volume=1.0,dynaudnorm=f=120:g=15" ' # Gabung volume & dynaudnorm dalam SATU tanda petik
         '-ac 2 '
         '-ar 48000 '
-        '-acodec libopus '   # Tetap pakai libopus agar jernih
+        #'-acodec libopus '   # Tetap pakai libopus agar jernih
         '-b:a 128k '
         '-vbr on '
         '-compression_level 10'
