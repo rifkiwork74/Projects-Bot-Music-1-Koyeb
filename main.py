@@ -370,11 +370,13 @@ class MusicDashboard(discord.ui.View):
         emb.description = description
         select = discord.ui.Select(placeholder="🚀 Pilih lagu untuk dilompati oleh siapa saja...", options=options)
         
-        # --- PERHATIKAN SPASI DI BAWAH INI (Harus Sejajar) ---
+
+        # --- PERHATIKAN SPASI DI BAWAH INI (Sudah Diperbaiki) ---
         async def select_callback(inter: discord.Interaction):
             idx = int(select.values[0])
             chosen = q.queue[idx]
             
+            # 1. Ambil judul untuk Embed
             judul_sekarang = "Tidak diketahui"
             if q.last_dashboard and q.last_dashboard.embeds:
                 try:
@@ -382,29 +384,29 @@ class MusicDashboard(discord.ui.View):
                 except:
                     pass
 
+            # 2. KRUSIAL: Pindahkan lagu ke urutan paling depan
+            # Kita hapus dari posisi aslinya dan masukkan ke posisi 0 (paling depan)
             del q.queue[idx]
             q.queue.appendleft(chosen)
             
-            if inter.guild.voice_client:
-                inter.guild.voice_client.stop()
-            
+            # 3. Beri respon awal agar tidak timeout
             info_next = f"⏭️ **Selanjutnya:** {chosen['title']}"
             embed_rapi = buat_embed_skip(inter.user, judul_sekarang, info_next)
-            
             await inter.response.send_message(embed=embed_rapi)
+
+            # 4. RESET STREAM: Stop dulu, beri jeda agar FFmpeg bersih, baru lanjut
+            if inter.guild.voice_client:
+                inter.guild.voice_client.stop()
+                # Jeda 1 detik sangat penting untuk membersihkan buffer FFmpeg
+                await asyncio.sleep(1) 
             
-            await asyncio.sleep(15)
+            # Notifikasi hapus otomatis setelah 15 detik
+            await asyncio.sleep(14) # Sisa waktu dari sleep sebelumnya
             try:
                 msg = await inter.original_response()
                 await msg.delete()
             except:
                 pass
-
-        select.callback = select_callback
-        view = discord.ui.View()
-        view.add_item(select)
-        
-        await interaction.response.send_message(embed=emb, view=view)
 
 
     @discord.ui.button(label="Skip", emoji="⏭️", style=discord.ButtonStyle.primary)
