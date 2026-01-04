@@ -33,24 +33,26 @@ YTDL_OPTIONS = {
 # 2. SETUP FFMPEG (Optimasi: Suara Jernih & Anti Patah-patah)
 
 
+
 FFMPEG_OPTIONS = {
+    # Menambahkan buffer agar streaming lebih stabil meskipun koneksi naik turun
     'before_options': (
         '-reconnect 1 '
         '-reconnect_streamed 1 '
-        '-reconnect_delay_max 3 ' # Dipercepat agar kalau putus langsung nyambung
-        '-probesize 1M ' # Diturunkan drastis agar CPU tidak berat di awal
-        '-analyzeduration 1M'
+        '-reconnect_delay_max 5 '
+        '-probesize 10M '
+        '-analyzeduration 10M'
     ),
+    
     'options': (
         '-vn '
-        '-b:a 128k ' # 128k adalah bitrate standar YouTube, paling stabil untuk bot
+        '-b:a 128k ' # Gunakan 192k (Standard Gold), lebih stabil dari 320k untuk bot
         '-af "aresample=48000,'
         'volume=1.0,'
-        'dynaudnorm=f=100:g=11" ' # Filter dibuat lebih halus agar CPU enteng
-        '-threads 1' # Cukup 1 thread agar tidak rebutan resource CPU
+        'dynaudnorm=f=150:g=15" '
+        '-threads 2' # Menggunakan 2 thread agar proses audio lebih cepat (anti-lag)
     )
 }
-
 
 
 
