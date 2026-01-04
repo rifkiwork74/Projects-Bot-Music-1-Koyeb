@@ -27,16 +27,11 @@ YTDL_OPTIONS = {
     'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
 }
 
-# 2. SETUP FFMPEG (HD AUDIO SETUP - SEPERTI BMO)
 
-
-# FFMPEG DENGAN AUTO BITRATE (OPUS NATIVE)
+# 2. SETUP FFMPEG (Hybrid: HD Quality + Volume Control Support)
 FFMPEG_OPTIONS = {
-    # 'before_options' adalah perintah yang dijalankan SEBELUM mengambil data (untuk analisis)
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 10M -analyzeduration 10M',
-    
-    # 'options' adalah perintah saat musik SEDANG berjalan (kualitas suara)
-    'options': '-vn -af "volume=1.0, aresample=48000" -b:a 192k'
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 1M -analyzeduration 1M',
+    'options': '-vn -af "aresample=48000"' # Hapus volume=1.0 disini, biar system bot yang atur
 }
 
 
@@ -442,7 +437,6 @@ async def next_logic(interaction):
             q.last_dashboard = None
         await interaction.channel.send("✅ Antrean selesai.", delete_after=10)
 
-
 async def start_stream(interaction, url):
     q = get_queue(interaction.guild_id)
     vc = interaction.guild.voice_client
@@ -463,10 +457,13 @@ async def start_stream(interaction, url):
         if 'entries' in data:
             data = data['entries'][0]
 
-        # 3. BAGIAN YANG KAMU BINGUNG (Inisialisasi Audio Opus)
-        # Kita pakai from_probe agar dia otomatis menyesuaikan bitrate terbaik
-        source = await discord.FFmpegOpusAudio.from_probe(data['url'], **FFMPEG_OPTIONS)
+        # --- PERBAIKAN DI SINI UNTUK FITUR VOLUME ---
+        # Kita pakai FFmpegPCMAudio (bukan OpusAudio) agar bisa dibungkus VolumeTransformer
+        audio_source = discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS)
         
+        # Bungkus dengan Transformer agar volume bisa diatur (0% - 200%)
+        source = discord.PCMVolumeTransformer(audio_source, volume=q.volume)
+        # ---------------------------------------------
         
         # 4. Fungsi callback setelah lagu selesai
         def after_playing(error):
@@ -482,20 +479,18 @@ async def start_stream(interaction, url):
             except: pass
             
         emb = discord.Embed(
-            title="🎶 Sedang Diputar (HD Mode)", 
+            title="🎶 Sedang Diputar", 
             description=f"**[{data['title']}]({data.get('webpage_url', url)})**", 
             color=0x2ecc71
         )
         emb.set_thumbnail(url=data.get('thumbnail'))
-        emb.set_footer(text=f"Permintaan: {interaction.user.display_name}")
+        emb.set_footer(text=f"Vol: {int(q.volume*50)}% • Req: {interaction.user.display_name}")
         
         q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
         
     except Exception as e:
         print(f"CRITICAL ERROR start_stream: {e}")
-        # Kalau gagal (misal server gak support Opus), bot bakal lanjut ke lagu berikutnya
         asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
-
 
         
   
@@ -675,14 +670,83 @@ async def queue_cmd(interaction: discord.Interaction):
     emb = discord.Embed(title="📜 Antrean", description="\n".join([f"{i+1}. {x['title']}" for i,x in enumerate(list(q.queue)[:15])]), color=0x9b59b6)
     await interaction.response.send_message(embed=emb, delete_after=20)
 
-@bot.tree.command(name="masuk_vc", description="Panggil bot")
-async def masuk(interaction: discord.Interaction):
-    if interaction.user.voice: await interaction.user.voice.channel.connect(); await interaction.response.send_message("👋 Bot telah standby!")
-    else: await interaction.response.send_message("❌ Masuk Voice dulu!", ephemeral=True)
 
-@bot.tree.command(name="keluar_vc", description="Keluarkan bot")
+# --- UPDATE FITUR MASUK & KELUAR (VALIDASI + EMBED + AUTO DELETE 60s) ---
+
+@bot.tree.command(name="masuk_vc", description="Panggil bot ke Voice Channel")
+async def masuk(interaction: discord.Interaction):
+    # 1. Cek apakah User ada di Voice Channel
+    if not interaction.user.voice:
+        emb_error = discord.Embed(
+            title="🚫 Akses Ditolak",
+            description=(
+                "Kamu **belum masuk** ke Voice Channel!\n"
+                "Mohon masuk ke voice channel terlebih dahulu agar aku bisa bergabung."
+            ),
+            color=0xe74c3c # Merah
+        )
+        emb_error.set_footer(text="Gagal bergabung")
+        # content=... untuk Tag User, delete_after=60 untuk hapus otomatis
+        return await interaction.response.send_message(content=interaction.user.mention, embed=emb_error, delete_after=60)
+
+    # 2. Logika Masuk Voice
+    vc = interaction.guild.voice_client
+    target_channel = interaction.user.voice.channel
+
+    if vc:
+        if vc.channel.id == target_channel.id:
+            return await interaction.response.send_message("⚠️ Aku sudah ada di sini bersamamu!", ephemeral=True)
+        await vc.move_to(target_channel)
+    else:
+        await target_channel.connect()
+
+    # 3. Embed Sukses
+    emb_success = discord.Embed(
+        title="📥 Berhasil Masuk!",
+        description=f"Siap memutar musik di **{target_channel.name}** 🎵\nAyo putar lagu kesukaanmu!",
+        color=0x2ecc71 # Hijau
+    )
+    emb_success.set_thumbnail(url="https://i.ibb.co.com/KppFQ6N6/Logo1.gif") # Opsional: Pakai logo botmu
+    
+    await interaction.response.send_message(content=interaction.user.mention, embed=emb_success, delete_after=60)
+
+
+@bot.tree.command(name="keluar_vc", description="Keluarkan bot dari Voice Channel")
 async def keluar(interaction: discord.Interaction):
-    if interaction.guild.voice_client: await interaction.guild.voice_client.disconnect(); await interaction.response.send_message("👋 Bot telah keluar.")
+    # 1. Cek apakah User ada di Voice Channel (Sesuai request kamu)
+    if not interaction.user.voice:
+        emb_error = discord.Embed(
+            title="🚫 Akses Ditolak",
+            description=(
+                "Kamu **harus berada di Voice Channel** untuk menggunakan perintah ini.\n"
+                "Masuklah dulu, baru kamu bisa menyuruhku keluar."
+            ),
+            color=0xe74c3c
+        )
+        return await interaction.response.send_message(content=interaction.user.mention, embed=emb_error, delete_after=60)
+
+    # 2. Logika Keluar
+    vc = interaction.guild.voice_client
+    if vc:
+        # Bersihkan antrean agar bersih saat masuk lagi nanti
+        q = get_queue(interaction.guild_id)
+        q.queue.clear()
+        
+        await vc.disconnect()
+        
+        # 3. Embed Sukses Keluar
+        emb_bye = discord.Embed(
+            title="👋 Sampai Jumpa!",
+            description="Aku telah keluar dari Voice Channel.\nTerima kasih sudah mendengarkan musik bersamaku! ✨",
+            color=0xf1c40f # Kuning/Emas
+        )
+        emb_bye.set_footer(text="Disconnect success")
+        
+        await interaction.response.send_message(content=interaction.user.mention, embed=emb_bye, delete_after=60)
+    else:
+        # Jika bot memang tidak ada di voice
+        await interaction.response.send_message("❌ Aku sedang tidak berada di dalam Voice Channel manapun.", ephemeral=True)
+
 
 @bot.tree.command(name="help", description="Lihat Panduan & Info Developer")
 async def help_cmd(interaction: discord.Interaction):
