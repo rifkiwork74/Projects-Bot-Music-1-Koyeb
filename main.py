@@ -50,7 +50,7 @@ FFMPEG_OPTIONS = {
         '-b:a 192k ' # Gunakan 192k (Standard Gold), lebih stabil dari 320k untuk bot
         '-af "aresample=48000,'
         'volume=1.0,'
-        'dynaudnorm=f=150:g=15" '
+        'dynaudnorm=f=100:g=11" '
         '-threads 2' # Menggunakan 2 thread agar proses audio lebih cepat (anti-lag)
     )
 }
