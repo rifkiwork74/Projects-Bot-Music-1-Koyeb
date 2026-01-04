@@ -25,7 +25,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
     # Tambahan agar bot tidak tersendat saat mendownload stream
-    'cachedir': False,
+    #'cachedir': False,
 }
 
 
