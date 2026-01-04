@@ -25,7 +25,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
     # Tambahan agar bot tidak tersendat saat mendownload stream
-    #'cachedir': False,
+    'cachedir': False,
 }
 
 
@@ -37,21 +37,27 @@ YTDL_OPTIONS = {
 # 2. SETUP FFMPEG (Optimasi: Suara Jernih & Anti Patah-patah)
 FFMPEG_OPTIONS = {
     'before_options': (
-        '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 '
-        '-nostdin'
-        '-probesize 5M '
-        '-analyzeduration 5M'
+        '-reconnect 1 '
+        '-reconnect_streamed 1 '
+        '-reconnect_delay_max 5 '
+        '-nostdin ' 
+        '-probesize 6M '
+        '-analyzeduration 6M'
+        
     ),
     'options': (
-        '-vn '                 # No Video
-        #'-b:a 192k ' 
-        '-ac 2 '               # 2 Channels (Stereo)
-        '-ar 48000 '           # Audio Rate 48.000 Hz (Wajib buat Discord!)
-        '-f s16le '            # Format: Signed 16-bit Little Endian (Raw Audio)
-        '-af "volume=1.0" '    # Filter Volume biar gak pecah (bisa diatur 0.1 - 1.0)
-        'dynaudnorm=f=120:g=15" '
+        '-vn '
+        '-af "volume=1.0,dynaudnorm=f=120:g=15" '
+        '-ac 2 '
+        '-ar 48000 '
+        '-acodec libopus '  # Ini rahasianya! Langsung ke format asli Discord
+        '-b:a 128k '        # Bitrate stabil
+        '-vbr on '          # Variable Bitrate agar suara detail tetap tajam
+        '-compression_level 10' # Kompresi maksimal untuk kualitas terbaik
     )
 }
+
+
 
 
 
