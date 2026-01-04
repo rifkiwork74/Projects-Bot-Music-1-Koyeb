@@ -13,7 +13,7 @@ TOKEN = os.environ['DISCORD_TOKEN']
 COOKIES_FILE = 'youtube_cookies.txt'
 
 
-# 1. SETUP YT-DLP (DIPAKSA AMBIL KUALITAS TERBAIK)
+# 1. SETUP YT-DLP
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -24,38 +24,31 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'source_address': '0.0.0.0',
     'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
-    # Tambahan agar bot tidak tersendat saat mendownload stream
     'cachedir': False,
 }
 
-
-
-# 2. SETUP FFMPEG (Optimasi: Suara Jernih & Anti Patah-patah)
-
-
-
-# 2. SETUP FFMPEG (Optimasi: Suara Jernih & Anti Patah-patah)
+# 2. SETUP FFMPEG (VERSI FIX ANTI-SKIP)
 FFMPEG_OPTIONS = {
     'before_options': (
         '-reconnect 1 '
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
-        '-nostdin ' 
-        '-probesize 6M '
-        '-analyzeduration 6M'
-        
+        '-nostdin '          # Spasi sangat penting di sini
+        '-probesize 7M '    # Dinaikkan agar buffer lebih stabil seperti di video
+        '-analyzeduration 7M'
     ),
     'options': (
         '-vn '
-        '-af "volume=1.0,dynaudnorm=f=120:g=15" '
+        '-af "volume=1.0,dynaudnorm=f=120:g=15" ' # Gabung volume & dynaudnorm dalam SATU tanda petik
         '-ac 2 '
         '-ar 48000 '
-        '-acodec libopus '  # Ini rahasianya! Langsung ke format asli Discord
-        '-b:a 128k '        # Bitrate stabil
-        '-vbr on '          # Variable Bitrate agar suara detail tetap tajam
-        '-compression_level 10' # Kompresi maksimal untuk kualitas terbaik
+        '-acodec libopus '   # Tetap pakai libopus agar jernih
+        '-b:a 128k '
+        '-vbr on '
+        '-compression_level 10'
     )
 }
+
 
 
 
