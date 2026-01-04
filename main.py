@@ -25,7 +25,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'cookiefile': COOKIES_FILE if os.path.exists(COOKIES_FILE) else None,
     # Tambahan agar bot tidak tersendat saat mendownload stream
-    #'cachedir': False,
+    'cachedir': False,
 }
 
 
@@ -34,6 +34,7 @@ YTDL_OPTIONS = {
 
 
 
+# 2. SETUP FFMPEG (Optimasi: Suara Jernih & Anti Patah-patah)
 FFMPEG_OPTIONS = {
     # Menambahkan buffer agar streaming lebih stabil meskipun koneksi naik turun
     'before_options': (
@@ -46,13 +47,14 @@ FFMPEG_OPTIONS = {
     
     'options': (
         '-vn '
-        '-b:a 128k ' # Gunakan 192k (Standard Gold), lebih stabil dari 320k untuk bot
+        '-b:a 192k ' # Gunakan 192k (Standard Gold), lebih stabil dari 320k untuk bot
         '-af "aresample=48000,'
         'volume=1.0,'
         'dynaudnorm=f=150:g=15" '
         '-threads 2' # Menggunakan 2 thread agar proses audio lebih cepat (anti-lag)
     )
 }
+
 
 
 
