@@ -186,101 +186,108 @@ async def on_voice_state_update(member, before, after):
 
 
 class SearchControlView(discord.ui.View):
-    def __init__(self, entries, user, page=0):
-        # Kita set timeout lebih lama, misal 180 detik (3 menit) agar tidak cepat hangus
-        super().__init__(timeout=180) 
+    def __init__(self, entries, user):
+        # timeout=None membuat menu ini permanen selama bot online
+        super().__init__(timeout=None) 
         self.entries = entries
         self.user = user
-        self.page = page
-        self.per_page = 5
-        self.update_view()
+        self.add_select_menu()
 
-    def update_view(self):
+    def add_select_menu(self):
+        # Membersihkan item lama sebelum membuat ulang (untuk sistem reset)
         self.clear_items()
         
-        start = self.page * self.per_page
-        end = start + self.per_page
-        current_batch = self.entries[start:end]
-
         options = []
-        for i, entry in enumerate(current_batch):
-            real_idx = start + i + 1
+        for i, entry in enumerate(self.entries):
+            # Mengambil informasi judul & URL
+            title = entry.get('title', 'Judul tidak diketahui')[:50]
+            url = entry.get('url') or entry.get('webpage_url')
+            
+            # Membuat opsi dropdown
             options.append(discord.SelectOption(
-                label=f"Nomor {real_idx}", 
-                value=entry['webpage_url'], 
-                description=entry['title'][:50],
-                emoji="🎶"
+                label=f"Pilih Nomor {i+1}", 
+                value=url, 
+                description=title,
+                emoji="🎵"
             ))
             
+        # Membuat Dropdown Menu
         select = discord.ui.Select(
-            placeholder=f"🎯 Pilih Lagu Halaman {self.page + 1}...", 
+            placeholder="🎯 Pilih lagu untuk ditambahkan ke antrean...", 
             options=options
         )
         
-        async def select_callback(interaction: discord.Interaction):
+        async def callback(interaction: discord.Interaction):
+            # Validasi agar hanya pemanggil command yang bisa menggunakan
             if interaction.user != self.user:
-                return await interaction.response.send_message("❌ Ini bukan menu kamu!", ephemeral=True)
+                return await interaction.response.send_message(
+                    "❌ Pesan ini bukan milikmu! Gunakan `/play` sendiri.", 
+                    ephemeral=True
+                )
             
-            # --- PERBAIKAN UTAMA DI SINI ---
-            # Segera beritahu Discord untuk menunggu (menghilangkan 'Interaction Failed')
-            await interaction.response.defer() 
+            # Beritahu Discord bahwa bot sedang memproses
+            await interaction.response.defer()
             
-            # Baru jalankan proses putar musik
-            await play_music(interaction, select.values[0])
+            # Jalankan fungsi putar musik
+            selected_url = select.values[0]
+            await play_music(interaction, selected_url)
             
-            try:
-                # Hapus menu pencarian setelah lagu terpilih agar rapi
-                await interaction.delete_original_response()
-            except:
-                pass
+            # --- Update Dynamic Interface ---
+            # Menampilkan pesan transisi sukses
+            status_embed = discord.Embed(
+                title="✨ Berhasil Ditambahkan!",
+                description=f"✅ Lagu sedang dimasukkan ke antrean.\n\n*Menu ini akan muncul kembali dalam 3 detik...*",
+                color=0x2ecc71 # Hijau
+            )
+            await interaction.edit_original_response(embed=status_embed, view=None)
 
-        select.callback = select_callback
-        self.add_item(select) 
+            # Tunggu sebentar lalu kembalikan menu utama agar bisa pilih lagi
+            await asyncio.sleep(3)
+            await interaction.edit_original_response(embed=self.create_embed(), view=self)
 
-        # Tombol navigasi halaman
-        if self.page > 0:
-            btn_prev = discord.ui.Button(label="Halaman 1", emoji="⬅️", style=discord.ButtonStyle.gray)
-            async def prev_callback(interaction: discord.Interaction):
-                if interaction.user != self.user: return
-                await interaction.response.defer() # Defer agar tidak failed saat ganti hal
-                self.page = 0
-                self.update_view()
-                await interaction.edit_original_response(embed=self.create_embed(), view=self)
-            btn_prev.callback = prev_callback
-            self.add_item(btn_prev)
+        select.callback = callback
+        self.add_item(select)
 
-        if self.page == 0 and len(self.entries) > 5:
-            btn_next = discord.ui.Button(label="Halaman 2", emoji="➡️", style=discord.ButtonStyle.gray)
-            async def next_callback(interaction: discord.Interaction):
-                if interaction.user != self.user: return
-                await interaction.response.defer() # Defer agar tidak failed saat ganti hal
-                self.page = 1
-                self.update_view()
-                await interaction.edit_original_response(embed=self.create_embed(), view=self)
-            btn_next.callback = next_callback
-            self.add_item(btn_next)
-
-        btn_cancel = discord.ui.Button(label="Batalkan", emoji="✖️", style=discord.ButtonStyle.danger)
-        async def cancel_callback(interaction: discord.Interaction):
+        # Menambahkan tombol Tutup Menu secara manual
+        btn_close = discord.ui.Button(
+            label="Tutup Menu", 
+            style=discord.ButtonStyle.danger, 
+            emoji="🗑️"
+        )
+        
+        async def close_callback(interaction: discord.Interaction):
             if interaction.user == self.user:
-                try: await interaction.message.delete()
-                except: pass
-        btn_cancel.callback = cancel_callback
-        self.add_item(btn_cancel)
+                await interaction.message.delete()
+            else:
+                await interaction.response.send_message("❌ Kamu tidak punya akses tutup.", ephemeral=True)
+        
+        btn_close.callback = close_callback
+        self.add_item(btn_close)
 
     def create_embed(self):
-        start = self.page * self.per_page
-        end = start + self.per_page
-        current_songs = self.entries[start:end]
+        # Tampilan Embed List Lagu
+        description = "📺 **YouTube Search Engine**\n"
+        description += "Silakan pilih lagu dari daftar di bawah ini untuk diputar.\n"
+        description += "*(Menu ini bersifat dinamis, kamu bisa memilih berkali-kali)*\n\n"
         
-        description = "✨ **Silakan pilih lagu yang ingin diputar:**\n\n"
-        for i, entry in enumerate(current_songs):
-            real_idx = start + i + 1
-            description += f"✨ `{real_idx}.` {entry['title'][:60]}...\n"
+        for i, entry in enumerate(self.entries):
+            title = entry.get('title', 'Unknown Title')
+            description += f"✨ `{i+1}.` {title[:60]}...\n"
             
-        embed = discord.Embed(title="🔍 Hasil Pencarian Musik", description=description, color=0xf1c40f)
-        embed.set_footer(text=f"Menu aktif selama 3 menit • Gunakan dropdown", icon_url=self.user.display_avatar.url)
+        embed = discord.Embed(
+            title="🔍 Hasil Pencarian Musik", 
+            description=description, 
+            color=0xf1c40f # Kuning Emas
+        )
+        
+        embed.set_thumbnail(url="https://i.ibb.co.com/KppFQ6N6/Logo1.gif") # Sesuaikan logo botmu
+        embed.set_footer(
+            text=f"Request oleh: {self.user.display_name} • Menu Aktif", 
+            icon_url=self.user.display_avatar.url
+        )
+        
         return embed
+
 
 
 
@@ -563,26 +570,36 @@ async def play_music(interaction, url):
 # --- 8. COMMANDS (UPDATE PADA BAGIAN PLAY) ---
 @bot.tree.command(name="play", description="Putar musik")
 async def play(interaction: discord.Interaction, cari: str):
-    await interaction.response.defer()
-    if not interaction.user.voice: 
-        return await interaction.followup.send("❌ Masuk Voice dulu!", ephemeral=True)
+    # 1. Respon awal agar tidak 'Interaction Failed' dan memberi info ke user
+    await interaction.response.send_message(f"🔍 **Sedang mencari:** `{cari}`... Mohon tunggu sebentar.", ephemeral=True)
     
-    if "http" in cari: 
-        await play_music(interaction, cari)
-        await interaction.followup.send("✅ Permintaan diproses!", ephemeral=True)
-    else:
-        # Mencari 15 lagu (3 halaman x 5 lagu) agar pencarian cepat
-        data = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: ytdl.extract_info(f"ytsearch15:{cari}", download=False)
-        )
-        
-        if not data['entries']: 
-            return await interaction.followup.send("❌ Tidak ketemu.", ephemeral=True)
+    if not interaction.user.voice: 
+        return await interaction.edit_original_response(content="❌ **Gagal:** Kamu harus masuk ke Voice Channel terlebih dahulu!")
+    
+    try:
+        if "http" in cari: 
+            await play_music(interaction, cari)
+            await interaction.edit_original_response(content="✅ **Berhasil:** Link lagu telah diproses ke antrean!")
+        else:
+            # 2. Mencari hanya 5 lagu dengan mode 'extract_flat' agar sangat cepat
+            search_opts = {'extract_flat': True, 'quiet': True}
             
-        # Memanggil View yang sudah diperbaiki
-        view = SearchControlView(data['entries'], interaction.user)
-        await interaction.followup.send(embed=view.create_embed(), view=view)
-        
+            # Kita jalankan ekstraksi info di executor agar tidak membekukan bot
+            data = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: yt_dlp.YoutubeDL(search_opts).extract_info(f"ytsearch5:{cari}", download=False)
+            )
+            
+            if not data or not data.get('entries'): 
+                return await interaction.edit_original_response(content="❌ **Gagal:** Lagu tidak ditemukan. Coba kata kunci lain.")
+            
+            # 3. Kirim hasil pencarian
+            view = SearchControlView(data['entries'], interaction.user)
+            await interaction.edit_original_response(content=None, embed=view.create_embed(), view=view)
+
+    except Exception as e:
+        print(f"Error pada Play Command: {e}")
+        await interaction.edit_original_response(content="⚠️ Terjadi kesalahan saat memproses pencarian.")
+
 
 
 @bot.tree.command(name="stop", description="Mematikan musik dan mengeluarkan bot dari voice channel")
