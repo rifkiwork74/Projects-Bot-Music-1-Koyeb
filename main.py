@@ -34,8 +34,8 @@ FFMPEG_OPTIONS = {
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
         '-nostdin '          # Spasi sangat penting di sini
-        '-probesize 7M '    # Dinaikkan agar buffer lebih stabil seperti di video
-        '-analyzeduration 7M'
+        '-probesize 5M '    # Dinaikkan agar buffer lebih stabil seperti di video
+        '-analyzeduration 5M'
     ),
     'options': (
         '-vn '
@@ -43,9 +43,9 @@ FFMPEG_OPTIONS = {
         '-ac 2 '
         '-ar 48000 '
         #'-acodec libopus '   # Tetap pakai libopus agar jernih
-        '-b:a 128k '
+        '-b:a 320k '
         '-vbr on '
-        '-compression_level 10'
+        '-compression_level 5'
     )
 }
 
