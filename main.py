@@ -310,6 +310,24 @@ class VolumeControlView(discord.ui.View):
 
 
 
+
+def buat_embed_skip(user, lagu_dilewati, info_selanjutnya):
+    """Fungsi pembantu agar tampilan skip/lompat selalu cantik & seragam ✨"""
+    embed = discord.Embed(
+        title="⏭️ MUSIC SKIP SYSTEM",
+        description=(
+            f"✨ **{user.mention}** telah melompat ke lagu berikutnya!\n\n"
+            f"🗑️ **Dilewati:** `{lagu_dilewati}`\n"
+            f"📥 **Status Antrean:** {info_selanjutnya}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        color=0xe67e22 # Warna Orange Sunset yang elegan
+    )
+    # Menambahkan icon user yang melakukan skip di footer
+    embed.set_footer(text="System Skip Otomatis • Angelss Project v17", icon_url=user.display_avatar.url)
+    return embed
+
+
 class MusicDashboard(discord.ui.View):
     def __init__(self, guild_id):
         super().__init__(timeout=None)
@@ -352,23 +370,41 @@ class MusicDashboard(discord.ui.View):
         emb.description = description
         select = discord.ui.Select(placeholder="🚀 Pilih lagu untuk dilompati oleh siapa saja...", options=options)
         
-        async def select_callback(inter: discord.Interaction):
-            # Di sini kita TIDAK pakai pengecekan user, jadi SEMUA orang bisa skip
+            async def select_callback(inter: discord.Interaction):
             idx = int(select.values[0])
             chosen = q.queue[idx]
             
-            # Logika melompat: ambil lagu terpilih, hapus dari list, taruh di depan, lalu stop lagu sekarang
+            # 1. Mengambil judul lagu yang sedang diputar saat ini dari Dashboard
+            judul_sekarang = "Tidak diketahui"
+            if q.last_dashboard and q.last_dashboard.embeds:
+                try:
+                    # Mengambil teks di dalam kurung siku [Judul Lagu]
+                    judul_sekarang = q.last_dashboard.embeds[0].description.split('[')[1].split(']')[0]
+                except:
+                    pass
+
+            # 2. Proses pemindahan antrean
             del q.queue[idx]
             q.queue.appendleft(chosen)
             
+            # 3. Hentikan lagu yang sekarang (otomatis memicu lagu pilihan tadi)
             if inter.guild.voice_client:
                 inter.guild.voice_client.stop()
             
-            await inter.response.send_message(f"⏭️ **{inter.user.display_name}** melompat ke: **{chosen['title']}**")
+            # 4. KIRIM EMBED CANTIK (Bukan teks biasa lagi)
+            info_next = f"⏭️ **Selanjutnya:** {chosen['title']}"
+            embed_rapi = buat_embed_skip(inter.user, judul_sekarang, info_next)
             
-        select.callback = select_callback
-        view = discord.ui.View()
-        view.add_item(select)
+            await inter.response.send_message(embed=embed_rapi)
+            
+            # Hapus pesan notifikasi setelah 15 detik agar chat tetap bersih
+            await asyncio.sleep(15)
+            try:
+                msg = await inter.original_response()
+                await msg.delete()
+            except:
+                pass
+
         
         # Hilangkan ephemeral=True agar muncul untuk semua orang
         await interaction.response.send_message(embed=emb, view=view)
