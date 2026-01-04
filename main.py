@@ -30,12 +30,15 @@ YTDL_OPTIONS = {
 
 # 2. SETUP FFMPEG (Hybrid: HD Quality + Volume Control Support)
 FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 1M -analyzeduration 1M',
+    # Memperbesar probesize dan analyzeduration untuk stabilitas stream
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 10M -analyzeduration 10M',
+    
     'options': (
         '-vn '
-        '-af "aresample=48000,'         # Standar jernih Discord
-        'acompressor=threshold=-20dB:ratio=4:attack=5:release=50,' # Bikin suara "padat" & "tebal"
-        'loudnorm=I=-16:TP=-1.5:LRA=11"' # Efek "meredam" agar tidak pecah & suara stabil (Loudness)'
+        '-af "aresample=48000,'         
+        'acompressor=threshold=-15dB:ratio=3:attack=10:release=100,' # Attack lebih lambat (10ms) untuk hilangkan bunyi kletuk
+        'loudnorm=I=-16:TP=-1.5:LRA=11,' # Normalisasi volume
+        'lowpass=f=18000"'              # Meredam frekuensi liar di atas 18kHz yang sering bikin bunyi pecah
     )
 }
 
