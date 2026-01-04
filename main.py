@@ -31,8 +31,14 @@ YTDL_OPTIONS = {
 # 2. SETUP FFMPEG (Hybrid: HD Quality + Volume Control Support)
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 1M -analyzeduration 1M',
-    'options': '-vn -af "aresample=48000"' # Hapus volume=1.0 disini, biar system bot yang atur
+    'options': (
+        '-vn '
+        '-af "aresample=48000,'         # Standar jernih Discord
+        'acompressor=threshold=-20dB:ratio=4:attack=5:release=50,' # Bikin suara "padat" & "tebal"
+        'loudnorm=I=-16:TP=-1.5:LRA=11"' # Efek "meredam" agar tidak pecah & suara stabil (Loudness)'
+    )
 }
+
 
 
 
@@ -113,7 +119,7 @@ class MusicQueue:
         self.queue = deque()
         self.current_info = None
         self.loop = False
-        self.volume = 1.0
+        self.volume = 0.5
         self.last_dashboard = None
 
 def get_queue(guild_id):
@@ -178,7 +184,8 @@ async def on_voice_state_update(member, before, after):
 
 class SearchControlView(discord.ui.View):
     def __init__(self, entries, user, page=0):
-        super().__init__(timeout=60)
+        # Kita set timeout lebih lama, misal 180 detik (3 menit) agar tidak cepat hangus
+        super().__init__(timeout=180) 
         self.entries = entries
         self.user = user
         self.page = page
@@ -211,26 +218,31 @@ class SearchControlView(discord.ui.View):
             if interaction.user != self.user:
                 return await interaction.response.send_message("❌ Ini bukan menu kamu!", ephemeral=True)
             
-            await interaction.response.defer()
+            # --- PERBAIKAN UTAMA DI SINI ---
+            # Segera beritahu Discord untuk menunggu (menghilangkan 'Interaction Failed')
+            await interaction.response.defer() 
+            
+            # Baru jalankan proses putar musik
             await play_music(interaction, select.values[0])
             
             try:
+                # Hapus menu pencarian setelah lagu terpilih agar rapi
                 await interaction.delete_original_response()
             except:
                 pass
 
         select.callback = select_callback
-        # --- BARIS PENTING DI BAWAH INI TADI HILANG ---
         self.add_item(select) 
-        # ---------------------------------------------
 
+        # Tombol navigasi halaman
         if self.page > 0:
             btn_prev = discord.ui.Button(label="Halaman 1", emoji="⬅️", style=discord.ButtonStyle.gray)
             async def prev_callback(interaction: discord.Interaction):
                 if interaction.user != self.user: return
+                await interaction.response.defer() # Defer agar tidak failed saat ganti hal
                 self.page = 0
                 self.update_view()
-                await interaction.response.edit_message(embed=self.create_embed(), view=self)
+                await interaction.edit_original_response(embed=self.create_embed(), view=self)
             btn_prev.callback = prev_callback
             self.add_item(btn_prev)
 
@@ -238,9 +250,10 @@ class SearchControlView(discord.ui.View):
             btn_next = discord.ui.Button(label="Halaman 2", emoji="➡️", style=discord.ButtonStyle.gray)
             async def next_callback(interaction: discord.Interaction):
                 if interaction.user != self.user: return
+                await interaction.response.defer() # Defer agar tidak failed saat ganti hal
                 self.page = 1
                 self.update_view()
-                await interaction.response.edit_message(embed=self.create_embed(), view=self)
+                await interaction.edit_original_response(embed=self.create_embed(), view=self)
             btn_next.callback = next_callback
             self.add_item(btn_next)
 
@@ -263,8 +276,10 @@ class SearchControlView(discord.ui.View):
             description += f"✨ `{real_idx}.` {entry['title'][:60]}...\n"
             
         embed = discord.Embed(title="🔍 Hasil Pencarian Musik", description=description, color=0xf1c40f)
-        embed.set_footer(text=f"Halaman {self.page + 1} dari 2 • Gunakan menu dropdown di bawah", icon_url=self.user.display_avatar.url)
+        embed.set_footer(text=f"Menu aktif selama 3 menit • Gunakan dropdown", icon_url=self.user.display_avatar.url)
         return embed
+
+
 
 
 
@@ -272,22 +287,40 @@ class SearchControlView(discord.ui.View):
 # --- 6. UI: DASHBOARD & VOLUME ---
 class VolumeControlView(discord.ui.View):
     def __init__(self, guild_id):
-        super().__init__(timeout=60); self.guild_id = guild_id
+        super().__init__(timeout=60)
+        self.guild_id = guild_id
+
     def create_embed(self):
-        q = get_queue(self.guild_id); vol_percent = int(q.volume * 100)
+        q = get_queue(self.guild_id)
+        vol_percent = int(q.volume * 100)
         embed = discord.Embed(title="🎚️ Pengaturan Audio", color=0x3498db)
-        bar = "▰" * (vol_percent // 20) + "▱" * (max(0, 5 - (vol_percent // 20)))
-        embed.description = f"Volume Saat Ini: **{vol_percent}%**\n`{bar}`"; return embed
-    @discord.ui.button(label="-20%", style=discord.ButtonStyle.danger, emoji="🔉")
+        # Bar volume (1 kotak = 10%, total 10 kotak untuk 100%)
+        bar_length = 10
+        filled = int(vol_percent / 10)
+        bar = "▰" * filled + "▱" * (bar_length - filled)
+        embed.description = f"Volume Saat Ini: **{vol_percent}%**\n`{bar}`"
+        embed.set_footer(text="Batas aman standar: 100%")
+        return embed
+
+    @discord.ui.button(label="-10%", style=discord.ButtonStyle.danger, emoji="🔉")
     async def down(self, interaction: discord.Interaction, button: discord.ui.Button):
-        q = get_queue(self.guild_id); q.volume = max(0.0, q.volume - 0.2)
-        if interaction.guild.voice_client and interaction.guild.voice_client.source: interaction.guild.voice_client.source.volume = q.volume
-        await interaction.response.edit_message(embed=self.create_embed())
-    @discord.ui.button(label="+20%", style=discord.ButtonStyle.success, emoji="🔊")
+        await interaction.response.defer() 
+        q = get_queue(self.guild_id)
+        # Kurangi 0.1 (10%), minimal tetap 0.0 (0%)
+        q.volume = max(0.0, q.volume - 0.1)
+        if interaction.guild.voice_client and interaction.guild.voice_client.source:
+            interaction.guild.voice_client.source.volume = q.volume
+        await interaction.edit_original_response(embed=self.create_embed())
+
+    @discord.ui.button(label="+10%", style=discord.ButtonStyle.success, emoji="🔊")
     async def up(self, interaction: discord.Interaction, button: discord.ui.Button):
-        q = get_queue(self.guild_id); q.volume = min(2.0, q.volume + 0.2)
-        if interaction.guild.voice_client and interaction.guild.voice_client.source: interaction.guild.voice_client.source.volume = q.volume
-        await interaction.response.edit_message(embed=self.create_embed())
+        await interaction.response.defer() 
+        q = get_queue(self.guild_id)
+        # Tambah 0.1 (10%), maksimal tetap 1.0 (100%) sesuai standar internasional
+        q.volume = min(1.0, q.volume + 0.1) 
+        if interaction.guild.voice_client and interaction.guild.voice_client.source:
+            interaction.guild.voice_client.source.volume = q.volume
+        await interaction.edit_original_response(embed=self.create_embed())
 
 
 
@@ -437,19 +470,18 @@ async def next_logic(interaction):
             q.last_dashboard = None
         await interaction.channel.send("✅ Antrean selesai.", delete_after=10)
 
+
 async def start_stream(interaction, url):
     q = get_queue(interaction.guild_id)
     vc = interaction.guild.voice_client
     if not vc: return
     
     try:
-        # 1. Bersihkan lagu lama
         if vc.is_playing() or vc.is_paused():
             vc.stop()
         
         await asyncio.sleep(0.5)
 
-        # 2. Ambil data dari YouTube
         data = await asyncio.get_event_loop().run_in_executor(
             None, lambda: ytdl.extract_info(url, download=False)
         )
@@ -457,23 +489,18 @@ async def start_stream(interaction, url):
         if 'entries' in data:
             data = data['entries'][0]
 
-        # --- PERBAIKAN DI SINI UNTUK FITUR VOLUME ---
-        # Kita pakai FFmpegPCMAudio (bukan OpusAudio) agar bisa dibungkus VolumeTransformer
+        # PAKAI PCM AGAR VOLUME BISA DIKONTROL
         audio_source = discord.FFmpegPCMAudio(data['url'], **FFMPEG_OPTIONS)
         
-        # Bungkus dengan Transformer agar volume bisa diatur (0% - 200%)
+        # SINKRONISASI: Ambil volume terakhir dari antrean (Default 50%)
         source = discord.PCMVolumeTransformer(audio_source, volume=q.volume)
-        # ---------------------------------------------
         
-        # 4. Fungsi callback setelah lagu selesai
         def after_playing(error):
             if error: print(f"Player error: {error}")
             asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
             
-        # 5. Mulai Putar
         vc.play(source, after=after_playing)
         
-        # 6. Dashboard (Hapus lama, kirim baru)
         if q.last_dashboard:
             try: await q.last_dashboard.delete()
             except: pass
@@ -484,7 +511,8 @@ async def start_stream(interaction, url):
             color=0x2ecc71
         )
         emb.set_thumbnail(url=data.get('thumbnail'))
-        emb.set_footer(text=f"Vol: {int(q.volume*50)}% • Req: {interaction.user.display_name}")
+        # Tampilkan Volume Real-time di Footer
+        emb.set_footer(text=f"🔊 Vol: {int(q.volume * 100)}% • Req: {interaction.user.display_name}")
         
         q.last_dashboard = await interaction.channel.send(embed=emb, view=MusicDashboard(interaction.guild_id))
         
@@ -492,7 +520,6 @@ async def start_stream(interaction, url):
         print(f"CRITICAL ERROR start_stream: {e}")
         asyncio.run_coroutine_threadsafe(next_logic(interaction), bot.loop)
 
-        
   
 
 
@@ -589,14 +616,38 @@ async def stop_cmd(interaction: discord.Interaction):
         await interaction.response.send_message("❌ **Gagal:** Bot tidak sedang berada di Voice Channel.", ephemeral=True)
 
 
-@bot.tree.command(name="volume", description="Atur Volume")
+@bot.tree.command(name="volume", description="Atur Volume (0-100%)")
+@app_commands.describe(persen="Masukkan angka antara 0 sampai 100")
 async def volume(interaction: discord.Interaction, persen: int):
     q = get_queue(interaction.guild_id)
-    if 0 <= persen <= 200:
+    
+    # 1. Batasi input agar sesuai standar internasional (Max 100)
+    if 0 <= persen <= 100:
+        # Ubah ke angka desimal (misal 50 jadi 0.5)
         q.volume = persen / 100
-        if interaction.guild.voice_client and interaction.guild.voice_client.source: interaction.guild.voice_client.source.volume = q.volume
-        await interaction.response.send_message(f"🔊 Volume: {persen}%")
-    else: await interaction.response.send_message("❌ Gunakan angka 0-200", ephemeral=True)
+        
+        # 2. Terapkan langsung ke audio yang sedang berjalan
+        if interaction.guild.voice_client and interaction.guild.voice_client.source:
+            interaction.guild.voice_client.source.volume = q.volume
+            
+        # 3. Buat visual bar agar keren seperti di dashboard
+        bar_length = 10
+        filled = int(persen / 10)
+        bar = "▰" * filled + "▱" * (bar_length - filled)
+        
+        embed = discord.Embed(
+            title="🔊 Volume Updated",
+            description=f"Volume telah diatur ke **{persen}%**\n`{bar}`",
+            color=0x3498db
+        )
+        await interaction.response.send_message(embed=embed, delete_after=15)
+    else:
+        # Pesan jika user input di luar 0-100
+        await interaction.response.send_message(
+            "❌ **Gagal:** Gunakan angka antara **0 sampai 100** saja untuk menjaga kualitas audio tetap jernih.", 
+            ephemeral=True
+        )
+
 
 @bot.tree.command(name="pause", description="Jeda musik")
 async def pause(interaction: discord.Interaction):
