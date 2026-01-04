@@ -28,20 +28,26 @@ YTDL_OPTIONS = {
 }
 
 
-# 2. SETUP FFMPEG (Hybrid: HD Quality + Volume Control Support)
-# 2. SETUP FFMPEG (Optimasi: Jernih & Ringan)
+# 2. SETUP FFMPEG (Optimasi: Suara Jernih & Anti Patah-patah)
 FFMPEG_OPTIONS = {
-    # Reconnect delay diperkecil dan buffer dioptimalkan agar tidak patah-patah
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 2 -probesize 5M -analyzeduration 5M',
+    # Menambahkan buffer agar streaming lebih stabil meskipun koneksi naik turun
+    'before_options': (
+        '-reconnect 1 '
+        '-reconnect_streamed 1 '
+        '-reconnect_delay_max 5 '
+        '-probesize 10M '
+        '-analyzeduration 10M'
+    ),
     
     'options': (
         '-vn '
-        '-af "aresample=48000,'         
-        'volume=1.0,' # Menghapus filter kompresor berat yang bikin suara robotik
-        'dynaudnorm=f=150:g=15" ' # Normalisasi otomatis yang lebih ringan daripada loudnorm
+        '-b:a 192k ' # Gunakan 192k (Standard Gold), lebih stabil dari 320k untuk bot
+        '-af "aresample=48000,'
+        'volume=1.0,'
+        'dynaudnorm=f=150:g=15" '
+        '-threads 2' # Menggunakan 2 thread agar proses audio lebih cepat (anti-lag)
     )
 }
-
 
 
 
