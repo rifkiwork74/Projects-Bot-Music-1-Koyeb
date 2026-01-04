@@ -370,34 +370,29 @@ class MusicDashboard(discord.ui.View):
         emb.description = description
         select = discord.ui.Select(placeholder="🚀 Pilih lagu untuk dilompati oleh siapa saja...", options=options)
         
-            async def select_callback(inter: discord.Interaction):
+        # --- PERHATIKAN SPASI DI BAWAH INI (Harus Sejajar) ---
+        async def select_callback(inter: discord.Interaction):
             idx = int(select.values[0])
             chosen = q.queue[idx]
             
-            # 1. Mengambil judul lagu yang sedang diputar saat ini dari Dashboard
             judul_sekarang = "Tidak diketahui"
             if q.last_dashboard and q.last_dashboard.embeds:
                 try:
-                    # Mengambil teks di dalam kurung siku [Judul Lagu]
                     judul_sekarang = q.last_dashboard.embeds[0].description.split('[')[1].split(']')[0]
                 except:
                     pass
 
-            # 2. Proses pemindahan antrean
             del q.queue[idx]
             q.queue.appendleft(chosen)
             
-            # 3. Hentikan lagu yang sekarang (otomatis memicu lagu pilihan tadi)
             if inter.guild.voice_client:
                 inter.guild.voice_client.stop()
             
-            # 4. KIRIM EMBED CANTIK (Bukan teks biasa lagi)
             info_next = f"⏭️ **Selanjutnya:** {chosen['title']}"
             embed_rapi = buat_embed_skip(inter.user, judul_sekarang, info_next)
             
             await inter.response.send_message(embed=embed_rapi)
             
-            # Hapus pesan notifikasi setelah 15 detik agar chat tetap bersih
             await asyncio.sleep(15)
             try:
                 msg = await inter.original_response()
@@ -405,8 +400,10 @@ class MusicDashboard(discord.ui.View):
             except:
                 pass
 
+        select.callback = select_callback
+        view = discord.ui.View()
+        view.add_item(select)
         
-        # Hilangkan ephemeral=True agar muncul untuk semua orang
         await interaction.response.send_message(embed=emb, view=view)
 
 
