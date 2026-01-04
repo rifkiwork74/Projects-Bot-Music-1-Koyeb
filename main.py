@@ -17,7 +17,7 @@ COOKIES_FILE = 'youtube_cookies.txt'
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
-    'default_search': 'ytsearch10',
+    'default_search': 'ytsearch5',
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
