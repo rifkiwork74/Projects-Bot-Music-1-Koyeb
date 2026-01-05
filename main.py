@@ -361,79 +361,65 @@ class MusicDashboard(discord.ui.View):
             return await interaction.response.send_message("📪 Antrean saat ini kosong.", ephemeral=True)
         
         emb = discord.Embed(title="📜 Antrean Musik (Publik)", color=0x2b2d31)
-        description = "Siapa saja bisa memilih lagu untuk langsung dilompati!\n\n"
+        description = "Pilih lagu di bawah untuk langsung diputar (Lompat Antrean)!\n\n"
+        
         options = []
         for i, item in enumerate(list(q.queue)[:10]):
             description += f"**{i+1}.** {item['title'][:50]}...\n"
             options.append(discord.SelectOption(label=f"{i+1}. {item['title'][:25]}", value=str(i)))
         
         emb.description = description
-        select = discord.ui.Select(placeholder="🚀 Pilih lagu untuk dilompati oleh siapa saja...", options=options)
         
+        select = discord.ui.Select(placeholder="🚀 Pilih lagu untuk dilompati...", options=options)
 
-        # --- PERHATIKAN SPASI DI BAWAH INI (Sudah Diperbaiki) ---
         async def select_callback(inter: discord.Interaction):
             idx = int(select.values[0])
             chosen = q.queue[idx]
             
-            # 1. Ambil judul untuk Embed
-            judul_sekarang = "Tidak diketahui"
+            judul_lama = "Tidak diketahui"
             if q.last_dashboard and q.last_dashboard.embeds:
-                try:
-                    judul_sekarang = q.last_dashboard.embeds[0].description.split('[')[1].split(']')[0]
-                except:
-                    pass
+                try: judul_lama = q.last_dashboard.embeds[0].description.split('[')[1].split(']')[0]
+                except: pass
 
-            # 2. KRUSIAL: Pindahkan lagu ke urutan paling depan
-            # Kita hapus dari posisi aslinya dan masukkan ke posisi 0 (paling depan)
+            # PROSES LOMPAT (Taruh di depan)
             del q.queue[idx]
             q.queue.appendleft(chosen)
             
-            # 3. Beri respon awal agar tidak timeout
             info_next = f"⏭️ **Selanjutnya:** {chosen['title']}"
-            embed_rapi = buat_embed_skip(inter.user, judul_sekarang, info_next)
+            embed_rapi = buat_embed_skip(inter.user, judul_lama, info_next)
             await inter.response.send_message(embed=embed_rapi)
 
-            # 4. RESET STREAM: Stop dulu, beri jeda agar FFmpeg bersih, baru lanjut
+            # STOP agar next_logic memutar lagu dari 00:00
             if inter.guild.voice_client:
                 inter.guild.voice_client.stop()
-                # Jeda 1 detik sangat penting untuk membersihkan buffer FFmpeg
-                await asyncio.sleep(1) 
             
-            # Notifikasi hapus otomatis setelah 15 detik
-            await asyncio.sleep(14) # Sisa waktu dari sleep sebelumnya
+            await asyncio.sleep(15)
             try:
                 msg = await inter.original_response()
                 await msg.delete()
-            except:
-                pass
+            except: pass
 
+        select.callback = select_callback
+        view_select = discord.ui.View()
+        view_select.add_item(select)
+        await interaction.response.send_message(embed=emb, view=view_select)
 
     @discord.ui.button(label="Skip", emoji="⏭️", style=discord.ButtonStyle.primary)
     async def sk(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # 1. Defer dulu agar tidak "Interaction Failed" (memberi waktu bot berpikir)
         await interaction.response.defer(ephemeral=False)
-        
         q = get_queue(self.guild_id)
         vc = interaction.guild.voice_client
         
         if not vc or not (vc.is_playing() or vc.is_paused()):
             return await interaction.followup.send("❌ **Informasi:** Tidak ada lagu untuk di-skip.", ephemeral=True)
 
-        # 2. Ambil Judul Lagu saat ini
         current_title = "Tidak diketahui"
         if q.last_dashboard and q.last_dashboard.embeds:
-            try:
-                full_desc = q.last_dashboard.embeds[0].description
-                if "[" in full_desc and "]" in full_desc:
-                    current_title = full_desc.split('[')[1].split(']')[0]
-            except:
-                pass
+            try: current_title = q.last_dashboard.embeds[0].description.split('[')[1].split(']')[0]
+            except: pass
 
-        # 3. Cek Antrean Berikutnya
         next_info = "Antrean habis, bot akan standby. ✨"
-        if q.queue:
-            next_info = f"⏭️ **Selanjutnya:** {q.queue[0]['title']}"
+        if q.queue: next_info = f"⏭️ **Selanjutnya:** {q.queue[0]['title']}"
 
         embed = discord.Embed(
             title="⏭️ MUSIC SKIP SYSTEM",
@@ -447,21 +433,19 @@ class MusicDashboard(discord.ui.View):
         )
         embed.set_footer(text="Gunakan /play untuk menambah lagu", icon_url=interaction.user.display_avatar.url)
 
-        # 4. Eksekusi Stop & Kirim Pesan
         vc.stop()
         await interaction.followup.send(embed=embed)
-        # Hapus pesan otomatis setelah 15 detik (manual karena followup tidak support delete_after)
         await asyncio.sleep(15)
         try:
-            await (await interaction.original_response()).delete()
-        except:
-            pass
+            msg = await interaction.original_response()
+            await msg.delete()
+        except: pass
 
     @discord.ui.button(label="Stop", emoji="⏹️", style=discord.ButtonStyle.danger)
     async def st(self, interaction: discord.Interaction, button: discord.ui.Button):
         q = get_queue(self.guild_id)
         vc = interaction.guild.voice_client
-        jumlah_antrean = len(q.queue)
+        jumlah_antrean = len(q.queue) # Menghitung antrean sebelum dihapus
         
         q.queue.clear()
         if vc:
@@ -480,6 +464,7 @@ class MusicDashboard(discord.ui.View):
         embed.set_thumbnail(url="https://i.ibb.co.com/KppFQ6N6/Logo1.gif")
         
         await interaction.response.send_message(embed=embed, delete_after=20)
+
 
 
 
