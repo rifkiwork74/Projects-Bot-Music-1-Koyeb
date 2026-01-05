@@ -34,19 +34,19 @@ FFMPEG_OPTIONS = {
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
         '-nostdin '          # Spasi sangat penting di sini
-        '-probesize 8M '    # Dinaikkan agar buffer lebih stabil seperti di video
+        '-probesize 5M '    # Dinaikkan agar buffer lebih stabil seperti di video
         '-analyzeduration 5M'
     ),
     'options': (
-        '-vn '
-        '-af "volume=1.0,dynaudnorm=f=350:g=15" ' # Gabung volume & dynaudnorm dalam SATU tanda petik
-        '-ac 2 '
-        '-ar 48000 '
-        #'-acodec libopus '   # Tetap pakai libopus agar jernih
-        '-b:a 320k '
-        '-vbr on '
-        '-compression_level 5'
-    )
+    '-vn '
+    # KUNCI UTAMA: Gabungan limiter dan normalisasi halus
+    '-af "alimiter=level_in=1.0:level_out=1.0:limit=0.9, dynaudnorm=f=500:g=31:p=0.9:m=5.0" '
+    '-ac 2 '
+    '-ar 48000 '
+    '-b:a 192k '         # 192k adalah sweet spot jernih di Discord & aman buat Koyeb
+    '-vbr on '
+    '-compression_level 5'
+	)
 }
 
 
