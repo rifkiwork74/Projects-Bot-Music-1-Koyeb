@@ -65,7 +65,7 @@ FFMPEG_OPTIONS = {
     ),
     'options': (
     '-vn '
-    '-af "alimiter=limit=1.0, dynaudnorm=f=800:g=31:m=5.0, treble=g=2, bass=g=3" '
+    '-af "alimiter=limit=1.5, dynaudnorm=f=800:g=31:m=5.0, treble=g=2, bass=g=3" '
     '-ac 2 '
     '-ar 48000 '
     '-b:a 320k '         
