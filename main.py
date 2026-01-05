@@ -38,17 +38,16 @@ FFMPEG_OPTIONS = {
         '-analyzeduration 5M'
     ),
     'options': (
-        '-vn '        
-        '-af "loudnorm=I=-16:TP=-1.5:LRA=11, aresample=48000" ' 
+        '-vn '
+        '-af "loudnorm=I=-16:TP=-1.5:LRA=11, aresample=48000" '
+        '-ac 2 '
         '-ar 48000 '
-        '-ac 2' 
         #'-acodec libopus '   # Tetap pakai libopus agar jernih
         '-b:a 320k '
         '-vbr on '
         '-compression_level 5'
     )
 }
-
 
 
 
