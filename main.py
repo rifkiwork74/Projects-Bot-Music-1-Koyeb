@@ -40,7 +40,7 @@ FFMPEG_OPTIONS = {
     'options': (
     '-vn '
     # KUNCI UTAMA: Gabungan limiter dan normalisasi halus
-    '-af "alimiter=limit=0.9, dynaudnorm=f=50:g=31:m=5.0, treble=g=2, bass=g=5" '
+    '-af "alimiter=limit=0.9, dynaudnorm=f=800:g=31:m=5.0, treble=g=2, bass=g=5" '
     '-ac 2 '
     '-ar 48000 '
     '-b:a 192k '         # 192k adalah sweet spot jernih di Discord & aman buat Koyeb
