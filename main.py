@@ -60,17 +60,17 @@ FFMPEG_OPTIONS = {
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
         '-nostdin '          
-        '-probesize 7M '    
+        '-probesize 10M '    
         '-analyzeduration 5M'
     ),
     'options': (
     '-vn '
-    '-af "alimiter=limit=1.5, dynaudnorm=f=800:g=31:m=5.0, treble=g=2, bass=g=3" '
+    '-af "alimiter=limit=0.9, dynaudnorm=f=800:g=31:m=5.0, treble=g=2, bass=g=3" '
     '-ac 2 '
     '-ar 48000 '
     '-b:a 320k '         
     '-vbr on '
-    '-compression_level 5'
+    '-compression_level 3'
 	)
 }
 
