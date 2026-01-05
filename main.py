@@ -34,7 +34,7 @@ FFMPEG_OPTIONS = {
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
         '-nostdin '
-        '-probesize 8M '    # Dinaikkan agar pembacaan file lebih jernih
+        '-probesize 5M '    # Dinaikkan agar pembacaan file lebih jernih
         '-analyzeduration 5M'
     ),
     'options': (
@@ -45,7 +45,8 @@ FFMPEG_OPTIONS = {
     '-b:a 320k '
     '-vbr on '
     '-compression_level 5'
-)
+	)
+}
 
 
 
