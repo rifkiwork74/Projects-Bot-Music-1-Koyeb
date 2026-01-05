@@ -34,13 +34,13 @@ FFMPEG_OPTIONS = {
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
         '-nostdin '          # Spasi sangat penting di sini
-        '-probesize 5M '    # Dinaikkan agar buffer lebih stabil seperti di video
+        '-probesize 7M '    # Dinaikkan agar buffer lebih stabil seperti di video
         '-analyzeduration 5M'
     ),
     'options': (
     '-vn '
     # KUNCI UTAMA: Gabungan limiter dan normalisasi halus
-    '-af "alimiter=limit=0.9, dynaudnorm=f=1000:g=31:m=5.0, treble=g=2" '
+    '-af "alimiter=limit=0.9, dynaudnorm=f=50:g=31:m=5.0, treble=g=2, bass=g=5" '
     '-ac 2 '
     '-ar 48000 '
     '-b:a 192k '         # 192k adalah sweet spot jernih di Discord & aman buat Koyeb
