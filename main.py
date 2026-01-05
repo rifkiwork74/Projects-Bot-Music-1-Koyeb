@@ -34,20 +34,19 @@ FFMPEG_OPTIONS = {
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
         '-nostdin '
-        '-probesize 5M '
+        '-probesize 8M '    # Dinaikkan agar pembacaan file lebih jernih
         '-analyzeduration 5M'
     ),
     'options': (
-        '-vn '
-        # Normalisasi volume yang halus banget
-        '-af " aresample=48000" '
-        '-ac 2 '
-        '-ar 48000 '
-        '-b:a 320k '         # Pas untuk Discord & enteng buat Koyeb
-        '-vbr on '
-        '-compression_level 5' # Tidak terlalu membebani CPU Koyeb
-    )
-}
+    '-vn '
+    '-af "volume=1.0,dynaudnorm=f=500:g=31:p=0.9:m=10.0" ' 
+    '-ac 2 '
+    '-ar 48000 '
+    '-b:a 320k '
+    '-vbr on '
+    '-compression_level 5'
+)
+
 
 
 
