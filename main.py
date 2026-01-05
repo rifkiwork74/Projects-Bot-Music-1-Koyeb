@@ -33,19 +33,19 @@ FFMPEG_OPTIONS = {
         '-reconnect 1 '
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
-        '-nostdin '          # Spasi sangat penting di sini
-        '-probesize 5M '    # Dinaikkan agar buffer lebih stabil seperti di video
+        '-nostdin '
+        '-probesize 5M '
         '-analyzeduration 5M'
     ),
     'options': (
         '-vn '
-        '-af "loudnorm=I=-16:TP=-1.5:LRA=11, aresample=48000" '
+        # Normalisasi volume yang halus banget
+        '-af "loudnorm=I=-16:TP=-1.5:LRA=11" ' 
         '-ac 2 '
         '-ar 48000 '
-        #'-acodec libopus '   # Tetap pakai libopus agar jernih
-        '-b:a 320k '
+        '-b:a 192k '         # Pas untuk Discord & enteng buat Koyeb
         '-vbr on '
-        '-compression_level 5'
+        '-compression_level 5' # Tidak terlalu membebani CPU Koyeb
     )
 }
 
