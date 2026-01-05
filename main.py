@@ -357,16 +357,23 @@ class MusicDashboard(discord.ui.View):
         await interaction.response.send_message(embed=view.create_embed(), view=view, ephemeral=True)
     
     @discord.ui.button(label="Antrean", emoji="📜", style=discord.ButtonStyle.gray)
-    async def list_q(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def list_q_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Ini khusus untuk klik tombol di dashboard
+        await self.tampilkan_antrean(interaction)
+
+    async def tampilkan_antrean(self, interaction: discord.Interaction):
         q = get_queue(self.guild_id)
         
-        # 1. Hapus pesan antrean lama jika ada (Refresh System)
+        # 1. Refresh System: Hapus pesan antrean lama
         if q.last_queue_msg:
             try: await q.last_queue_msg.delete()
             except: pass
 
         if not q.queue:
-            return await interaction.response.send_message("📪 Antrean saat ini kosong.", ephemeral=True)
+            if interaction.response.is_done():
+                return await interaction.followup.send("📪 Antrean saat ini kosong.", ephemeral=True)
+            else:
+                return await interaction.response.send_message("📪 Antrean saat ini kosong.", ephemeral=True)
         
         emb = discord.Embed(title="📜 Antrean Musik (Publik)", color=0x2b2d31)
         description = "Pilih lagu di bawah untuk langsung diputar (Lompat Antrean)!\n\n"
@@ -384,11 +391,10 @@ class MusicDashboard(discord.ui.View):
         select = discord.ui.Select(placeholder="🚀 Pilih lagu untuk dilompati...", options=options)
 
         async def select_callback(inter: discord.Interaction):
-            # Update menu: Kasih centang pada yang dipilih
+            # Beri centang pada pilihan
             for option in select.options:
                 if option.value == select.values[0]:
                     option.emoji = "✅"
-                    option.description = "Lagu ini sedang diproses..."
             
             await inter.response.edit_message(view=view_select)
             
@@ -403,11 +409,7 @@ class MusicDashboard(discord.ui.View):
             del q.queue[idx]
             q.queue.appendleft(chosen)
             
-            # Embed info tetap seperti awal
-            info_next = f"⏭️ **Selanjutnya:** {chosen['title']}"
-            embed_rapi = buat_embed_skip(inter.user, judul_lama, info_next)
-            
-            # Kirim info skip
+            embed_rapi = buat_embed_skip(inter.user, judul_lama, f"⏭️ **Selanjutnya:** {chosen['title']}")
             skip_msg = await inter.followup.send(embed=embed_rapi)
 
             if inter.guild.voice_client:
@@ -421,8 +423,13 @@ class MusicDashboard(discord.ui.View):
         view_select = discord.ui.View(timeout=60)
         view_select.add_item(select)
         
-        # Simpan pesan baru ke memory
-        q.last_queue_msg = await interaction.response.send_message(embed=emb, view=view_select)
+        # Kirim pesan baru
+        if interaction.response.is_done():
+            q.last_queue_msg = await interaction.followup.send(embed=emb, view=view_select)
+        else:
+            await interaction.response.send_message(embed=emb, view=view_select)
+            q.last_queue_msg = await interaction.original_response()
+
 
     @discord.ui.button(label="Skip", emoji="⏭️", style=discord.ButtonStyle.primary)
     async def sk(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -780,9 +787,10 @@ async def skip_cmd(interaction: discord.Interaction):
 
 @bot.tree.command(name="queue", description="Lihat antrean dan pilih lagu")
 async def queue_cmd(interaction: discord.Interaction):
-    # Kita panggil logika yang sama dengan tombol dashboard
-    dashboard = MusicDashboard(interaction.guild_id)
-    await dashboard.list_q(interaction)
+    # Buat instance dashboard sementara untuk mengakses fungsinya
+    view = MusicDashboard(interaction.guild_id)
+    await view.tampilkan_antrean(interaction)
+
 
 
 # --- UPDATE FITUR MASUK & KELUAR (VALIDASI + EMBED + AUTO DELETE 60s) ---
