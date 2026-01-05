@@ -1,4 +1,4 @@
-# tes ngeleg jier
+
 import datetime
 import discord
 from discord import app_commands
@@ -38,10 +38,10 @@ FFMPEG_OPTIONS = {
         '-analyzeduration 5M'
     ),
     'options': (
-        '-vn '
-        '-af "volume=1.0,dynaudnorm=f=120:g=15" ' # Gabung volume & dynaudnorm dalam SATU tanda petik
-        '-ac 2 '
+        '-vn '        
+        '-af "loudnorm=I=-16:TP=-1.5:LRA=11, aresample=48000" ' 
         '-ar 48000 '
+        '-ac 2' 
         #'-acodec libopus '   # Tetap pakai libopus agar jernih
         '-b:a 320k '
         '-vbr on '
