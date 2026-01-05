@@ -40,7 +40,7 @@ FFMPEG_OPTIONS = {
     'options': (
         '-vn '
         # Normalisasi volume yang halus banget
-        '-af "loudnorm=I=-16:TP=-1.5:LRA=11" ' 
+        '-af "loudnorm=I=-14:TP=-1.5:LRA=7" ' 
         '-ac 2 '
         '-ar 48000 '
         '-b:a 192k '         # Pas untuk Discord & enteng buat Koyeb
