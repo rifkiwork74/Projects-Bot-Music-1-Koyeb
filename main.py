@@ -60,7 +60,7 @@ FFMPEG_OPTIONS = {
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
         '-nostdin '          
-        '-probesize 10M '    
+        '-probesize 7M '    
         '-analyzeduration 5M'
     ),
     'options': (
@@ -70,7 +70,7 @@ FFMPEG_OPTIONS = {
     '-ar 48000 '
     '-b:a 192k '         
     '-vbr on '
-    '-compression_level 3'
+    '-compression_level 6'
 	)
 }
 
