@@ -40,10 +40,10 @@ FFMPEG_OPTIONS = {
     'options': (
         '-vn '
         # Normalisasi volume yang halus banget
-        '-af "loudnorm=I=-15:TP=-1.0:LRA=15, highpass=f=40, aresample=48000" '
+        '-af "loudnorm=I=-15:TP=-1.5:LRA=13, highpass=f=45, aresample=48000" '
         '-ac 2 '
         '-ar 48000 '
-        '-b:a 192k '         # Pas untuk Discord & enteng buat Koyeb
+        '-b:a 320k '         # Pas untuk Discord & enteng buat Koyeb
         '-vbr on '
         '-compression_level 5' # Tidak terlalu membebani CPU Koyeb
     )
