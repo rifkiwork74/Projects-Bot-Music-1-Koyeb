@@ -1,4 +1,4 @@
-
+# tes ngeleg jier
 import datetime
 import discord
 from discord import app_commands
