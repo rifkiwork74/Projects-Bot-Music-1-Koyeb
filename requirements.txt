@@ -2,3 +2,6 @@ discord.py[voice]
 yt-dlp
 PyNaCl
 asyncio
+discord.py[voice]
+PyNaCl
+yt-dlp
